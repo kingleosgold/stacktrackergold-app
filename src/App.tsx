@@ -3,6 +3,7 @@ import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
 import Holdings from './pages/Holdings';
 import AddHolding from './pages/AddHolding';
+import EditHolding from './pages/EditHolding';
 import Settings from './pages/Settings';
 
 function App() {
@@ -12,6 +13,7 @@ function App() {
         <Route index element={<Dashboard />} />
         <Route path="holdings" element={<Holdings />} />
         <Route path="add" element={<AddHolding />} />
+        <Route path="edit/:id" element={<EditHolding />} />
         <Route path="settings" element={<Settings />} />
       </Route>
     </Routes>

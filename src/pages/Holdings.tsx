@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useHoldings } from '../hooks/useHoldings';
 import { useSpotPrices } from '../hooks/useSpotPrices';
 import type { Holding, Metal } from '../types/holding';
@@ -38,10 +38,11 @@ function formatWeight(oz: number): string {
 interface HoldingRowProps {
   holding: Holding;
   spotPrice: number;
+  onEdit: (id: string) => void;
   onDelete: (id: string) => void;
 }
 
-function HoldingRow({ holding, spotPrice, onDelete }: HoldingRowProps) {
+function HoldingRow({ holding, spotPrice, onEdit, onDelete }: HoldingRowProps) {
   const totalOz = holding.weight * holding.quantity;
   const currentValue = totalOz * spotPrice;
   const gainLoss = currentValue - holding.purchasePrice;
@@ -50,8 +51,17 @@ function HoldingRow({ holding, spotPrice, onDelete }: HoldingRowProps) {
     : 0;
   const isPositive = gainLoss >= 0;
 
+  const handleRowClick = (e: React.MouseEvent) => {
+    // Don't navigate if clicking on a button
+    if ((e.target as HTMLElement).closest('button')) return;
+    onEdit(holding.id);
+  };
+
   return (
-    <tr className="border-b border-border hover:bg-surface-hover transition-colors">
+    <tr
+      className="border-b border-border hover:bg-surface-hover transition-colors cursor-pointer"
+      onClick={handleRowClick}
+    >
       <td className="py-3 px-4">
         <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${METAL_BG[holding.metal]} ${METAL_COLORS[holding.metal]}`}>
           {holding.metal.charAt(0).toUpperCase() + holding.metal.slice(1)}
@@ -76,21 +86,34 @@ function HoldingRow({ holding, spotPrice, onDelete }: HoldingRowProps) {
         </div>
       </td>
       <td className="py-3 px-4 text-right">
-        <button
-          onClick={() => onDelete(holding.id)}
-          className="text-red-500 hover:text-red-400 text-sm px-2 py-1 rounded hover:bg-red-500/10 transition-colors"
-        >
-          Delete
-        </button>
+        <div className="flex gap-2 justify-end">
+          <button
+            onClick={() => onEdit(holding.id)}
+            className="text-gold hover:text-gold-hover text-sm px-2 py-1 rounded hover:bg-gold/10 transition-colors"
+          >
+            Edit
+          </button>
+          <button
+            onClick={() => onDelete(holding.id)}
+            className="text-red-500 hover:text-red-400 text-sm px-2 py-1 rounded hover:bg-red-500/10 transition-colors"
+          >
+            Delete
+          </button>
+        </div>
       </td>
     </tr>
   );
 }
 
 export default function Holdings() {
+  const navigate = useNavigate();
   const { holdings, loading, deleteHolding, exportCSV, getTotalsByMetal } = useHoldings();
   const { prices } = useSpotPrices();
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+
+  const handleEdit = (id: string) => {
+    navigate(`/edit/${id}`);
+  };
 
   const handleDelete = (id: string) => {
     if (confirmDelete === id) {
@@ -229,6 +252,7 @@ export default function Holdings() {
                   key={holding.id}
                   holding={holding}
                   spotPrice={getSpotPrice(holding.metal)}
+                  onEdit={handleEdit}
                   onDelete={confirmDelete === holding.id ? handleDelete : () => handleDelete(holding.id)}
                 />
               ))}
