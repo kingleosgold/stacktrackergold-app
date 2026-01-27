@@ -27,13 +27,13 @@ export default function EditHolding() {
     );
   }
 
-  const handleSubmit = (data: HoldingFormData) => {
-    updateHolding(holding.id, data);
+  const handleSubmit = async (data: HoldingFormData) => {
+    await updateHolding(holding.id, data);
     navigate('/holdings');
   };
 
-  const handleDelete = () => {
-    deleteHolding(holding.id);
+  const handleDelete = async () => {
+    await deleteHolding(holding.id);
     navigate('/holdings');
   };
 

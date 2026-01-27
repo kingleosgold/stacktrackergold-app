@@ -7,8 +7,8 @@ export default function AddHolding() {
   const navigate = useNavigate();
   const { addHolding } = useHoldings();
 
-  const handleSubmit = (data: HoldingFormData) => {
-    addHolding(data);
+  const handleSubmit = async (data: HoldingFormData) => {
+    await addHolding(data);
     navigate('/holdings');
   };
 
