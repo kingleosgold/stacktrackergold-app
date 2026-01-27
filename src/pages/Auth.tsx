@@ -11,6 +11,7 @@ export default function Auth() {
   const [mode, setMode] = useState<AuthMode>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -53,6 +54,12 @@ export default function Auth() {
     e.preventDefault();
     setError(null);
     setMessage(null);
+
+    if (mode === 'signup' && password !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
     setSubmitting(true);
 
     try {
@@ -64,6 +71,7 @@ export default function Auth() {
           setMessage('Check your email for a confirmation link!');
           setEmail('');
           setPassword('');
+          setConfirmPassword('');
         }
       } else {
         const { error } = await signIn(email, password);
@@ -109,6 +117,7 @@ export default function Auth() {
                 setMode('signin');
                 setError(null);
                 setMessage(null);
+                setConfirmPassword('');
               }}
               className={`flex-1 py-2 text-sm rounded-md transition-colors ${
                 mode === 'signin'
@@ -202,6 +211,24 @@ export default function Auth() {
                 placeholder="••••••••"
               />
             </div>
+
+            {mode === 'signup' && (
+              <div>
+                <label htmlFor="confirmPassword" className="block text-sm font-medium mb-2">
+                  Confirm Password
+                </label>
+                <input
+                  id="confirmPassword"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                  minLength={6}
+                  className="w-full p-3 rounded-lg bg-background border border-border focus:border-gold focus:outline-none"
+                  placeholder="••••••••"
+                />
+              </div>
+            )}
 
             {/* Error Message */}
             {error && (
