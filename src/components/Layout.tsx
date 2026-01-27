@@ -1,4 +1,5 @@
-import { NavLink, Outlet } from 'react-router-dom';
+import { NavLink, Outlet, Link } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
 const navItems = [
   { to: '/', label: 'Dashboard', icon: '📊' },
@@ -8,6 +9,8 @@ const navItems = [
 ];
 
 export default function Layout() {
+  const { user, isConfigured } = useAuth();
+
   return (
     <div className="min-h-screen flex flex-col md:flex-row">
       {/* Desktop Sidebar */}
@@ -16,6 +19,22 @@ export default function Layout() {
           <h1 className="text-xl font-bold">
             <span className="text-gold">Stack Tracker</span> Gold
           </h1>
+          {isConfigured && (
+            <div className="mt-2">
+              {user ? (
+                <p className="text-xs text-text-muted truncate" title={user.email}>
+                  {user.email}
+                </p>
+              ) : (
+                <Link
+                  to="/auth"
+                  className="text-xs text-gold hover:text-gold-hover transition-colors"
+                >
+                  Sign in to sync
+                </Link>
+              )}
+            </div>
+          )}
         </div>
         <nav className="flex-1 p-4">
           <ul className="space-y-2">

@@ -1,7 +1,9 @@
 import { useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useHoldings } from '../hooks/useHoldings';
 import { useTheme } from '../hooks/useTheme';
 import type { Theme } from '../hooks/useTheme';
+import { useAuth } from '../contexts/AuthContext';
 import { clearAllHoldings } from '../services/holdings';
 
 const APP_VERSION = '1.0.0';
@@ -137,12 +139,20 @@ function ConfirmModal({
 }
 
 export default function Settings() {
+  const navigate = useNavigate();
   const { holdings, exportCSV, importCSV, refresh } = useHoldings();
   const { theme, setTheme } = useTheme();
+  const { user, isConfigured, signOut } = useAuth();
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [importStatus, setImportStatus] = useState<string | null>(null);
   const csvInputRef = useRef<HTMLInputElement>(null);
   const jsonInputRef = useRef<HTMLInputElement>(null);
+
+  const handleSignOut = async () => {
+    await signOut();
+    setImportStatus('Signed out successfully');
+    setTimeout(() => setImportStatus(null), 3000);
+  };
 
   const handleExportCSV = () => {
     const csv = exportCSV();
@@ -250,6 +260,34 @@ export default function Settings() {
         }`}>
           {importStatus}
         </div>
+      )}
+
+      {/* Account */}
+      {isConfigured && (
+        <SettingsSection title="Account">
+          {user ? (
+            <>
+              <div className="py-4 px-4">
+                <p className="text-text">Signed in as</p>
+                <p className="text-sm text-text-muted mt-0.5">{user.email}</p>
+              </div>
+              <SettingsRow
+                label="Sign Out"
+                description="Sign out of your account"
+                onClick={handleSignOut}
+              />
+            </>
+          ) : (
+            <SettingsRow
+              label="Sign In"
+              description="Sign in to sync your holdings across devices"
+              onClick={() => navigate('/auth')}
+              rightElement={
+                <span className="text-gold text-sm font-medium">Sign In</span>
+              }
+            />
+          )}
+        </SettingsSection>
       )}
 
       {/* Appearance */}
