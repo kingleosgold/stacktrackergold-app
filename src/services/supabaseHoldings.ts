@@ -145,17 +145,32 @@ export async function deleteSupabaseHolding(
 }
 
 // Sync local holdings to Supabase (for initial migration)
+// Generates new UUIDs since local IDs are not valid UUIDs
 export async function syncLocalToSupabase(
   localHoldings: Holding[],
   userId: string
 ): Promise<void> {
   if (localHoldings.length === 0) return;
 
-  const supabaseHoldings = localHoldings.map((h) => toSupabaseHolding(h, userId));
+  // Convert local holdings to Supabase format with new UUIDs
+  const supabaseHoldings = localHoldings.map((h) => ({
+    id: crypto.randomUUID(), // Generate new UUID for Supabase
+    user_id: userId,
+    metal: h.metal,
+    type: h.type,
+    weight: h.weight,
+    weight_unit: h.weightUnit,
+    quantity: h.quantity,
+    purchase_price: h.purchasePrice,
+    purchase_date: h.purchaseDate,
+    notes: h.notes || null,
+    created_at: h.createdAt,
+    updated_at: h.updatedAt,
+  }));
 
   const { error } = await supabase
     .from('holdings')
-    .upsert(supabaseHoldings, { onConflict: 'id' });
+    .insert(supabaseHoldings);
 
   if (error) {
     console.error('Error syncing holdings:', error);
