@@ -12,6 +12,11 @@ interface AuthContextType {
   signInWithGoogle: () => Promise<{ error: AuthError | null }>;
   signInWithApple: () => Promise<{ error: AuthError | null }>;
   signOut: () => Promise<{ error: AuthError | null }>;
+  linkWithGoogle: () => Promise<{ error: AuthError | null }>;
+  linkWithApple: () => Promise<{ error: AuthError | null }>;
+  updateEmailPassword: (email: string, password: string) => Promise<{ error: AuthError | null }>;
+  getLinkedProviders: () => string[];
+  hasEmailPassword: () => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -86,6 +91,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { error };
   };
 
+  const linkWithGoogle = async () => {
+    const { error } = await supabase.auth.linkIdentity({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/settings`,
+      },
+    });
+    return { error };
+  };
+
+  const linkWithApple = async () => {
+    const { error } = await supabase.auth.linkIdentity({
+      provider: 'apple',
+      options: {
+        redirectTo: `${window.location.origin}/settings`,
+      },
+    });
+    return { error };
+  };
+
+  const updateEmailPassword = async (email: string, password: string) => {
+    const updates: { email?: string; password?: string } = {};
+    if (email) updates.email = email;
+    if (password) updates.password = password;
+
+    const { error } = await supabase.auth.updateUser(updates);
+    return { error };
+  };
+
+  const getLinkedProviders = (): string[] => {
+    if (!user?.identities) return [];
+    return user.identities.map((identity) => identity.provider);
+  };
+
+  const hasEmailPassword = (): boolean => {
+    if (!user?.identities) return false;
+    return user.identities.some((identity) => identity.provider === 'email');
+  };
+
   const value = {
     user,
     session,
@@ -96,6 +140,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signInWithGoogle,
     signInWithApple,
     signOut,
+    linkWithGoogle,
+    linkWithApple,
+    updateEmailPassword,
+    getLinkedProviders,
+    hasEmailPassword,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
