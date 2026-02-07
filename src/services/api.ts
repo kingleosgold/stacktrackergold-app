@@ -9,6 +9,7 @@ export interface SpotPrices {
   timestamp: string;
   source: string;
   cacheAgeMinutes: number;
+  marketsClosed?: boolean;
   change: {
     gold: { amount?: number; percent?: number; prevClose?: number };
     silver: { amount?: number; percent?: number; prevClose?: number };
