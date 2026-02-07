@@ -23,10 +23,9 @@ interface PriceCardProps {
   change?: { amount?: number; percent?: number };
   isGold?: boolean;
   loading?: boolean;
-  marketsClosed?: boolean;
 }
 
-function PriceCard({ label, price, change, isGold, loading, marketsClosed }: PriceCardProps) {
+function PriceCard({ label, price, change, isGold, loading }: PriceCardProps) {
   const changeInfo = formatChange(change?.amount, change?.percent);
 
   return (
@@ -39,13 +38,11 @@ function PriceCard({ label, price, change, isGold, loading, marketsClosed }: Pri
           <p className={`text-xl font-semibold ${isGold ? 'text-gold' : 'text-text'}`}>
             {formatPrice(price)}
           </p>
-          {marketsClosed ? (
-            <p className="text-xs mt-1 text-text-muted">Markets Closed</p>
-          ) : changeInfo ? (
+          {changeInfo && (
             <p className={`text-xs mt-1 ${changeInfo.isPositive ? 'text-green-500' : 'text-red-500'}`}>
               {changeInfo.text}
             </p>
-          ) : null}
+          )}
         </>
       )}
     </div>
@@ -64,26 +61,22 @@ export default function SpotPrices() {
           change={prices?.change?.gold}
           isGold
           loading={loading && !prices}
-          marketsClosed={prices?.marketsClosed}
         />
         <PriceCard
           label="Silver"
           price={prices?.silver}
           change={prices?.change?.silver}
           loading={loading && !prices}
-          marketsClosed={prices?.marketsClosed}
         />
         <PriceCard
           label="Platinum"
           price={prices?.platinum}
           loading={loading && !prices}
-          marketsClosed={prices?.marketsClosed}
         />
         <PriceCard
           label="Palladium"
           price={prices?.palladium}
           loading={loading && !prices}
-          marketsClosed={prices?.marketsClosed}
         />
       </div>
 
