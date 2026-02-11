@@ -110,38 +110,6 @@ async function fetchPreviousClose(): Promise<{
 }
 
 /**
- * Fetch price history from the price_log table.
- * Returns one price point per day (the last reading each day).
- * @param days Number of days of history to fetch
- */
-export async function fetchPriceHistory(days: number): Promise<PriceLogEntry[]> {
-  const since = new Date();
-  since.setDate(since.getDate() - days);
-
-  const { data, error } = await supabase
-    .from('price_log')
-    .select('id, timestamp, gold_price, silver_price, platinum_price, palladium_price, created_at')
-    .gte('created_at', since.toISOString())
-    .order('created_at', { ascending: true });
-
-  if (error) {
-    console.error('Error fetching price history:', error);
-    return [];
-  }
-
-  if (!data || data.length === 0) return [];
-
-  // Downsample to ~1 point per day for chart performance
-  const byDay = new Map<string, PriceLogEntry>();
-  for (const entry of data) {
-    const dayKey = entry.created_at.slice(0, 10); // YYYY-MM-DD
-    byDay.set(dayKey, entry); // keep last entry per day
-  }
-
-  return Array.from(byDay.values());
-}
-
-/**
  * Fetch recent price data for sparklines (last 24 hours, ~1 point per hour).
  */
 export async function fetchSparklineData(): Promise<PriceLogEntry[]> {

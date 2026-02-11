@@ -20,12 +20,44 @@ function toSupabaseHolding(holding: Holding, userId: string) {
   };
 }
 
+// Extract a clean product name from the type field.
+// The Supabase column may contain a plain string, a JSON string, or a JSON
+// object with metadata (local_id, source, cost_basis, etc.).
+function cleanType(raw: unknown): string {
+  if (raw == null) return 'Other';
+
+  // Already a plain string – check if it's a JSON string
+  if (typeof raw === 'string') {
+    const trimmed = raw.trim();
+    if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (typeof parsed === 'object' && parsed !== null) {
+          return parsed.name || parsed.type || parsed.label || 'Other';
+        }
+      } catch {
+        // Not valid JSON – use as-is
+      }
+    }
+    // Return only the first line (in case metadata is appended after newlines)
+    return trimmed.split('\n')[0];
+  }
+
+  // If Supabase returned a JSONB object directly
+  if (typeof raw === 'object') {
+    const obj = raw as Record<string, unknown>;
+    return String(obj.name || obj.type || obj.label || 'Other');
+  }
+
+  return String(raw);
+}
+
 // Convert Supabase holding to local format
 function fromSupabaseHolding(row: any): Holding {
   return {
     id: row.id,
     metal: row.metal,
-    type: row.type,
+    type: cleanType(row.type),
     weight: row.weight,
     weightUnit: row.weight_unit || 'oz',
     quantity: row.quantity,

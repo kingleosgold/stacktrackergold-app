@@ -7,15 +7,21 @@ import {
 } from 'recharts';
 import { useHoldings } from '../hooks/useHoldings';
 import { useSpotPrices } from '../hooks/useSpotPrices';
-import { fetchPriceHistory } from '../services/api';
-import type { PriceLogEntry } from '../services/api';
+import { fetchSpotPriceHistory } from '../services/api';
+import type { SpotPriceHistoryPoint } from '../services/api';
 import { formatCurrency, formatWeight } from '../utils/format';
 import { METAL_COLORS, METAL_LABELS, METALS } from '../utils/constants';
 import { CardSkeleton, ChartSkeleton } from '../components/Skeleton';
 import type { Metal } from '../types/holding';
 
-const RANGE_DAYS: Record<string, number> = {
-  '1W': 7, '1M': 30, '3M': 90, '6M': 180, '1Y': 365, 'All': 730,
+// Map UI range buttons to backend API range parameter
+const RANGE_API_PARAM: Record<string, string> = {
+  '1W': '1M', '1M': '1M', '3M': '3M', '6M': '6M', '1Y': '1Y', 'All': 'ALL',
+};
+
+// For 1W, we fetch 1M from backend then slice to last 7 days
+const RANGE_SLICE_DAYS: Record<string, number | null> = {
+  '1W': 7, '1M': null, '3M': null, '6M': null, '1Y': null, 'All': null,
 };
 
 const container = {
@@ -60,14 +66,23 @@ export default function Analytics() {
   const { holdings, getTotalsByMetal, loading } = useHoldings();
   const { prices, loading: pricesLoading } = useSpotPrices(60000);
   const [selectedRange, setSelectedRange] = useState<typeof TIME_RANGES[number]>('1M');
-  const [priceHistory, setPriceHistory] = useState<PriceLogEntry[]>([]);
+  const [priceHistory, setPriceHistory] = useState<SpotPriceHistoryPoint[]>([]);
 
   const getSpotPrice = (metal: Metal): number => prices?.[metal] || 0;
 
-  // Fetch real price history from price_log when range changes
+  // Fetch price history from backend API when range changes
   useEffect(() => {
-    const days = RANGE_DAYS[selectedRange] || 730;
-    fetchPriceHistory(days).then(setPriceHistory).catch(console.error);
+    const apiRange = RANGE_API_PARAM[selectedRange] || '1M';
+    fetchSpotPriceHistory(apiRange)
+      .then((res) => {
+        let data = res.data || [];
+        const sliceDays = RANGE_SLICE_DAYS[selectedRange];
+        if (sliceDays != null && data.length > sliceDays) {
+          data = data.slice(-sliceDays);
+        }
+        setPriceHistory(data);
+      })
+      .catch(console.error);
   }, [selectedRange]);
 
   const stats = useMemo(() => {
@@ -160,17 +175,17 @@ export default function Analytics() {
     };
   }, [holdings, prices, getTotalsByMetal]);
 
-  // Compute real portfolio value history from price_log × holdings oz
+  // Compute portfolio value history from backend spot-price-history × holdings oz
   const portfolioHistory = useMemo(() => {
     if (priceHistory.length === 0 || holdings.length === 0) return [];
     const totals = getTotalsByMetal();
-    return priceHistory.map((entry) => {
+    return priceHistory.map((point) => {
       const value =
-        totals.gold.totalOz * entry.gold_price +
-        totals.silver.totalOz * entry.silver_price +
-        totals.platinum.totalOz * entry.platinum_price +
-        totals.palladium.totalOz * entry.palladium_price;
-      const d = new Date(entry.created_at);
+        totals.gold.totalOz * (point.gold || 0) +
+        totals.silver.totalOz * (point.silver || 0) +
+        totals.platinum.totalOz * (point.platinum || 0) +
+        totals.palladium.totalOz * (point.palladium || 0);
+      const d = new Date(point.date);
       return {
         date: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
         value: Math.round(value * 100) / 100,
