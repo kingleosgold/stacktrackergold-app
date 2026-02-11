@@ -170,3 +170,91 @@ export async function fetchSparklineData(): Promise<PriceLogEntry[]> {
 
   return Array.from(byHour.values());
 }
+
+// ─── Intelligence Feed ──────────────────────────────────────────
+
+export interface IntelligenceBrief {
+  id: string;
+  date: string;
+  category: string;
+  title: string;
+  summary: string;
+  source: string;
+  source_url: string;
+  relevance_score: number;
+  created_at: string;
+}
+
+export interface IntelligenceResponse {
+  success: boolean;
+  date: string;
+  briefs: IntelligenceBrief[];
+  generated_at: string;
+}
+
+export async function fetchIntelligence(date?: string): Promise<IntelligenceResponse> {
+  const d = date || new Date().toISOString().slice(0, 10);
+  const response = await fetch(`${API_BASE_URL}/api/intelligence?date=${d}`);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch intelligence: ${response.status}`);
+  }
+  return response.json();
+}
+
+// ─── COMEX Vault Data ───────────────────────────────────────────
+
+export interface VaultDataPoint {
+  date: string;
+  registered_oz: number;
+  eligible_oz: number;
+  combined_oz: number;
+  registered_change_oz: number;
+  eligible_change_oz: number;
+  oversubscribed_ratio: number;
+}
+
+export interface VaultDataResponse {
+  success: boolean;
+  source: string;
+  days: number;
+  data: {
+    gold: VaultDataPoint[];
+    silver: VaultDataPoint[];
+    platinum: VaultDataPoint[];
+    palladium: VaultDataPoint[];
+  };
+}
+
+export async function fetchVaultData(source = 'comex', days = 30): Promise<VaultDataResponse> {
+  const response = await fetch(`${API_BASE_URL}/api/vault-data?source=${source}&days=${days}`);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch vault data: ${response.status}`);
+  }
+  return response.json();
+}
+
+// ─── Spot Price History ─────────────────────────────────────────
+
+export interface SpotPriceHistoryPoint {
+  date: string;
+  gold: number;
+  silver: number;
+  platinum: number;
+  palladium: number;
+}
+
+export interface SpotPriceHistoryResponse {
+  success: boolean;
+  range: string;
+  totalPoints: number;
+  sampledPoints: number;
+  data: SpotPriceHistoryPoint[];
+}
+
+export async function fetchSpotPriceHistory(range = '1M'): Promise<SpotPriceHistoryResponse> {
+  const response = await fetch(`${API_BASE_URL}/api/spot-price-history?range=${range}`);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch spot price history: ${response.status}`);
+  }
+  return response.json();
+}
