@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip,
@@ -7,10 +7,16 @@ import {
 } from 'recharts';
 import { useHoldings } from '../hooks/useHoldings';
 import { useSpotPrices } from '../hooks/useSpotPrices';
+import { fetchPriceHistory } from '../services/api';
+import type { PriceLogEntry } from '../services/api';
 import { formatCurrency, formatWeight } from '../utils/format';
 import { METAL_COLORS, METAL_LABELS, METALS } from '../utils/constants';
 import { CardSkeleton, ChartSkeleton } from '../components/Skeleton';
 import type { Metal } from '../types/holding';
+
+const RANGE_DAYS: Record<string, number> = {
+  '1W': 7, '1M': 30, '3M': 90, '6M': 180, '1Y': 365, 'All': 730,
+};
 
 const container = {
   hidden: { opacity: 0 },
@@ -54,8 +60,15 @@ export default function Analytics() {
   const { holdings, getTotalsByMetal, loading } = useHoldings();
   const { prices, loading: pricesLoading } = useSpotPrices(60000);
   const [selectedRange, setSelectedRange] = useState<typeof TIME_RANGES[number]>('1M');
+  const [priceHistory, setPriceHistory] = useState<PriceLogEntry[]>([]);
 
   const getSpotPrice = (metal: Metal): number => prices?.[metal] || 0;
+
+  // Fetch real price history from price_log when range changes
+  useEffect(() => {
+    const days = RANGE_DAYS[selectedRange] || 730;
+    fetchPriceHistory(days).then(setPriceHistory).catch(console.error);
+  }, [selectedRange]);
 
   const stats = useMemo(() => {
     if (!prices) return null;
@@ -131,28 +144,6 @@ export default function Analytics() {
       }
     }
 
-    // Simulated portfolio value over time (based on current holdings applied to past price estimates)
-    const generatePortfolioHistory = () => {
-      const days = selectedRange === '1W' ? 7 : selectedRange === '1M' ? 30 : selectedRange === '3M' ? 90
-        : selectedRange === '6M' ? 180 : selectedRange === '1Y' ? 365 : 730;
-      const points: { date: string; value: number }[] = [];
-
-      for (let i = days; i >= 0; i--) {
-        const date = new Date();
-        date.setDate(date.getDate() - i);
-        // Simulate price variation: base value with some random walk
-        const variation = 1 + (Math.sin(i / 15) * 0.03 + Math.cos(i / 7) * 0.02);
-        const value = totalValue * variation;
-        points.push({
-          date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-          value: Math.round(value * 100) / 100,
-        });
-      }
-      return points;
-    };
-
-    const portfolioHistory = generatePortfolioHistory();
-
     return {
       allocation: allocationWithPercent,
       costVsValue,
@@ -165,9 +156,26 @@ export default function Analytics() {
       worstPurchase,
       totalValue,
       totalCost,
-      portfolioHistory,
     };
-  }, [holdings, prices, getTotalsByMetal, selectedRange]);
+  }, [holdings, prices, getTotalsByMetal]);
+
+  // Compute real portfolio value history from price_log × holdings oz
+  const portfolioHistory = useMemo(() => {
+    if (priceHistory.length === 0 || holdings.length === 0) return [];
+    const totals = getTotalsByMetal();
+    return priceHistory.map((entry) => {
+      const value =
+        totals.gold.totalOz * entry.gold_price +
+        totals.silver.totalOz * entry.silver_price +
+        totals.platinum.totalOz * entry.platinum_price +
+        totals.palladium.totalOz * entry.palladium_price;
+      const d = new Date(entry.created_at);
+      return {
+        date: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        value: Math.round(value * 100) / 100,
+      };
+    });
+  }, [priceHistory, holdings, getTotalsByMetal]);
 
   const isLoading = loading || pricesLoading;
 
@@ -259,7 +267,7 @@ export default function Analytics() {
           </div>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={stats.portfolioHistory}>
+              <AreaChart data={portfolioHistory}>
                 <defs>
                   <linearGradient id="portfolioGradient" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="#D4A843" stopOpacity={0.25} />

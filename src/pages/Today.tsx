@@ -1,17 +1,14 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Area, AreaChart, ResponsiveContainer } from 'recharts';
 import { useHoldings } from '../hooks/useHoldings';
 import { useSpotPrices } from '../hooks/useSpotPrices';
+import { fetchSparklineData } from '../services/api';
+import type { PriceLogEntry } from '../services/api';
 import { formatCurrency, formatPercent, formatChange } from '../utils/format';
 import { METAL_COLORS, METAL_LABELS, METALS } from '../utils/constants';
 import { CardSkeleton } from '../components/Skeleton';
-
-const sparklineData = [
-  { v: 40 }, { v: 42 }, { v: 38 }, { v: 45 }, { v: 43 },
-  { v: 47 }, { v: 44 }, { v: 50 }, { v: 48 }, { v: 52 },
-  { v: 49 }, { v: 55 }, { v: 53 }, { v: 58 }, { v: 56 },
-];
+import type { Metal } from '../types/holding';
 
 const container = {
   hidden: { opacity: 0 },
@@ -26,10 +23,15 @@ const item = {
   show: { opacity: 1, y: 0, transition: { duration: 0.3, ease: 'easeOut' as const } },
 };
 
-function MiniSparkline({ color, positive }: { color: string; positive: boolean }) {
-  const data = positive
-    ? sparklineData
-    : [...sparklineData].reverse();
+const METAL_PRICE_KEY: Record<Metal, keyof PriceLogEntry> = {
+  gold: 'gold_price',
+  silver: 'silver_price',
+  platinum: 'platinum_price',
+  palladium: 'palladium_price',
+};
+
+function MiniSparkline({ data, color }: { data: { v: number }[]; color: string }) {
+  if (data.length < 2) return null;
 
   return (
     <div className="w-16 h-8">
@@ -59,10 +61,43 @@ function MiniSparkline({ color, positive }: { color: string; positive: boolean }
 export default function Today() {
   const { holdings, getTotalsByMetal, loading: holdingsLoading } = useHoldings();
   const { prices, loading: pricesLoading, lastUpdated } = useSpotPrices(60000);
+  const [sparklineRaw, setSparklineRaw] = useState<PriceLogEntry[]>([]);
+
+  // Fetch real sparkline data from price_log
+  useEffect(() => {
+    fetchSparklineData().then(setSparklineRaw).catch(console.error);
+  }, []);
+
+  // Build per-metal sparkline data from real price_log
+  const sparklines = useMemo(() => {
+    const result: Record<Metal, { v: number }[]> = {
+      gold: [], silver: [], platinum: [], palladium: [],
+    };
+    for (const entry of sparklineRaw) {
+      for (const metal of METALS) {
+        const key = METAL_PRICE_KEY[metal];
+        result[metal].push({ v: entry[key] as number });
+      }
+    }
+    return result;
+  }, [sparklineRaw]);
 
   const stats = useMemo(() => {
     if (!prices) return null;
     const totals = getTotalsByMetal();
+
+    // Debug: log holdings data shape for BUG 1 diagnosis
+    if (holdings.length > 0) {
+      console.group('[Stack Tracker] Holdings data audit');
+      for (const h of holdings.slice(0, 5)) {
+        const totalOz = h.weight * h.quantity;
+        console.log(
+          `${h.metal} ${h.type}: weight=${h.weight} oz × qty=${h.quantity} = ${totalOz} oz | purchasePrice=$${h.purchasePrice} | costPerOz=$${(h.purchasePrice / totalOz).toFixed(2)}`
+        );
+      }
+      if (holdings.length > 5) console.log(`... and ${holdings.length - 5} more`);
+      console.groupEnd();
+    }
 
     let totalValue = 0;
     let totalCost = 0;
@@ -71,7 +106,7 @@ export default function Today() {
       const data = totals[metal];
       const spotPrice = prices[metal] || 0;
       const value = data.totalOz * spotPrice;
-      const changePercent = prices.change?.[metal as 'gold' | 'silver']?.percent || 0;
+      const changePercent = prices.change?.[metal]?.percent || 0;
       const dailyImpact = value * (changePercent / 100);
 
       totalValue += value;
@@ -99,6 +134,20 @@ export default function Today() {
   }, [holdings, prices, getTotalsByMetal]);
 
   const isLoading = holdingsLoading || pricesLoading;
+
+  // Build a portfolio-level sparkline from real data
+  const portfolioSparkline = useMemo(() => {
+    if (sparklineRaw.length < 2 || !holdings.length) return [];
+    const totals = getTotalsByMetal();
+    return sparklineRaw.map((entry) => {
+      let value = 0;
+      for (const metal of METALS) {
+        const key = METAL_PRICE_KEY[metal];
+        value += totals[metal].totalOz * (entry[key] as number);
+      }
+      return { v: value };
+    });
+  }, [sparklineRaw, holdings, getTotalsByMetal]);
 
   return (
     <div className="max-w-5xl mx-auto p-4 md:p-6 lg:p-8">
@@ -150,10 +199,12 @@ export default function Today() {
                     <span className="text-xs text-text-muted">today</span>
                   </div>
                 </div>
-                <MiniSparkline
-                  color={stats.totalDailyChange >= 0 ? '#22c55e' : '#ef4444'}
-                  positive={stats.totalDailyChange >= 0}
-                />
+                {portfolioSparkline.length >= 2 && (
+                  <MiniSparkline
+                    data={portfolioSparkline}
+                    color={stats.totalDailyChange >= 0 ? '#22c55e' : '#ef4444'}
+                  />
+                )}
               </div>
             </div>
           </motion.div>
@@ -189,11 +240,12 @@ export default function Today() {
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
               {METALS.map((metal) => {
                 const price = prices[metal] || 0;
-                const change = prices.change?.[metal as 'gold' | 'silver'];
+                const change = prices.change?.[metal];
                 const changePercent = change?.percent || 0;
                 const changeAmount = change?.amount || 0;
                 const isPositive = changePercent >= 0;
                 const color = METAL_COLORS[metal];
+                const metalSparkline = sparklines[metal];
 
                 return (
                   <motion.div
@@ -210,18 +262,26 @@ export default function Today() {
                       <span className="text-xs font-semibold tracking-wide" style={{ color }}>
                         {METAL_LABELS[metal]}
                       </span>
-                      <MiniSparkline color={color} positive={isPositive} />
+                      {metalSparkline.length >= 2 && (
+                        <MiniSparkline data={metalSparkline} color={color} />
+                      )}
                     </div>
                     <p className="text-lg font-bold">{formatCurrency(price)}</p>
                     <div className="flex items-center gap-2 mt-1">
-                      <span className={`text-xs font-medium ${isPositive ? 'text-green' : 'text-red'}`}>
-                        {isPositive ? '+' : ''}{changeAmount.toFixed(2)}
-                      </span>
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
-                        isPositive ? 'bg-green/10 text-green' : 'bg-red/10 text-red'
-                      }`}>
-                        {formatPercent(changePercent)}
-                      </span>
+                      {changeAmount !== 0 || changePercent !== 0 ? (
+                        <>
+                          <span className={`text-xs font-medium ${isPositive ? 'text-green' : 'text-red'}`}>
+                            {isPositive ? '+' : ''}{changeAmount.toFixed(2)}
+                          </span>
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                            isPositive ? 'bg-green/10 text-green' : 'bg-red/10 text-red'
+                          }`}>
+                            {formatPercent(changePercent)}
+                          </span>
+                        </>
+                      ) : (
+                        <span className="text-xs text-text-muted">--</span>
+                      )}
                     </div>
                   </motion.div>
                 );
