@@ -340,7 +340,7 @@ export function useHoldings(): UseHoldingsResult {
     for (const holding of holdings) {
       const totalOz = holding.weight * holding.quantity;
       totals[holding.metal].totalOz += totalOz;
-      totals[holding.metal].totalCost += holding.purchasePrice;
+      totals[holding.metal].totalCost += holding.purchasePrice * holding.quantity;
     }
 
     return totals;

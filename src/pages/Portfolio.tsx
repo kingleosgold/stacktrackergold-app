@@ -284,10 +284,11 @@ export default function Portfolio() {
               const spotPrice = getSpotPrice(holding.metal);
               const totalOz = holding.weight * holding.quantity;
               const currentValue = totalOz * spotPrice;
-              const gainLoss = currentValue - holding.purchasePrice;
-              const gainLossPercent = holding.purchasePrice > 0 ? (gainLoss / holding.purchasePrice) * 100 : 0;
+              const totalCost = holding.purchasePrice * holding.quantity;
+              const gainLoss = currentValue - totalCost;
+              const gainLossPercent = totalCost > 0 ? (gainLoss / totalCost) * 100 : 0;
               const spotValue = totalOz * spotPrice;
-              const premiumOverSpot = spotValue > 0 ? ((holding.purchasePrice - spotValue) / spotValue) * 100 : 0;
+              const premiumOverSpot = spotValue > 0 ? ((totalCost - spotValue) / spotValue) * 100 : 0;
               const isPositive = gainLoss >= 0;
 
               return (
@@ -332,7 +333,7 @@ export default function Portfolio() {
 
                   {/* Cost */}
                   <div className="hidden md:flex items-center justify-end">
-                    <span className="text-sm">{formatCurrency(holding.purchasePrice)}</span>
+                    <span className="text-sm">{formatCurrency(totalCost)}</span>
                   </div>
 
                   {/* Value */}

@@ -134,7 +134,8 @@ export default function Analytics() {
       const spotPrice = getSpotPrice(holding.metal);
       const spotValue = holding.weight * holding.quantity * spotPrice;
       if (spotValue === 0) continue;
-      const premium = ((holding.purchasePrice - spotValue) / spotValue) * 100;
+      const totalCost = holding.purchasePrice * holding.quantity;
+      const premium = ((totalCost - spotValue) / spotValue) * 100;
 
       if (!bestPurchase || premium < bestPurchase.premium) {
         bestPurchase = { type: holding.type, metal: holding.metal, premium };

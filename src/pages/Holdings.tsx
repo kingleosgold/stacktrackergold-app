@@ -44,10 +44,11 @@ interface HoldingRowProps {
 
 function HoldingRow({ holding, spotPrice, onEdit, onDelete }: HoldingRowProps) {
   const totalOz = holding.weight * holding.quantity;
+  const totalCost = holding.purchasePrice * holding.quantity;
   const currentValue = totalOz * spotPrice;
-  const gainLoss = currentValue - holding.purchasePrice;
-  const gainLossPercent = holding.purchasePrice > 0
-    ? (gainLoss / holding.purchasePrice) * 100
+  const gainLoss = currentValue - totalCost;
+  const gainLossPercent = totalCost > 0
+    ? (gainLoss / totalCost) * 100
     : 0;
   const isPositive = gainLoss >= 0;
 
@@ -77,7 +78,7 @@ function HoldingRow({ holding, spotPrice, onEdit, onDelete }: HoldingRowProps) {
         {formatWeight(holding.weight)} × {holding.quantity}
       </td>
       <td className="py-3 px-4 text-right">{formatWeight(totalOz)}</td>
-      <td className="py-3 px-4 text-right">{formatCurrency(holding.purchasePrice)}</td>
+      <td className="py-3 px-4 text-right">{formatCurrency(totalCost)}</td>
       <td className="py-3 px-4 text-right">{formatCurrency(currentValue)}</td>
       <td className={`py-3 px-4 text-right ${isPositive ? 'text-green-500' : 'text-red-500'}`}>
         <div>{formatCurrency(gainLoss)}</div>

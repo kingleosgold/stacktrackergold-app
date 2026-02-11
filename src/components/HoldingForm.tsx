@@ -226,7 +226,7 @@ export default function HoldingForm({
         {/* Purchase Price */}
         <div>
           <label className="block text-sm font-medium mb-2">
-            Total Purchase Price (USD)
+            Purchase Price Per Item (USD)
           </label>
           <div className="relative">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted">$</span>

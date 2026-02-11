@@ -281,7 +281,7 @@ export default function HoldingModal({
 
                 {/* Purchase Price */}
                 <div>
-                  <label className={labelClass}>Total Purchase Price (USD)</label>
+                  <label className={labelClass}>Purchase Price Per Item (USD)</label>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted text-sm">$</span>
                     <input

@@ -8,7 +8,7 @@ export interface Holding {
   weight: number; // Always stored in troy oz
   weightUnit: WeightUnit; // Original unit for display
   quantity: number;
-  purchasePrice: number; // Total paid
+  purchasePrice: number; // Price per item
   purchaseDate: string; // ISO date string
   notes?: string;
   createdAt: string;

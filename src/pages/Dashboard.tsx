@@ -77,7 +77,7 @@ export default function Dashboard() {
       // Calculate premiums from holdings
       const metalHoldings = holdings.filter((h) => h.metal === metal);
       const premiums = metalHoldings.reduce((sum, h) => {
-        return sum + Math.max(0, h.purchasePrice - h.weight * h.quantity * spotPrice);
+        return sum + Math.max(0, h.purchasePrice * h.quantity - h.weight * h.quantity * spotPrice);
       }, 0);
       totalPremiumsPaid += premiums;
 

@@ -92,7 +92,7 @@ export default function Today() {
       for (const h of holdings.slice(0, 5)) {
         const totalOz = h.weight * h.quantity;
         console.log(
-          `${h.metal} ${h.type}: weight=${h.weight} oz × qty=${h.quantity} = ${totalOz} oz | purchasePrice=$${h.purchasePrice} | costPerOz=$${(h.purchasePrice / totalOz).toFixed(2)}`
+          `${h.metal} ${h.type}: weight=${h.weight} oz × qty=${h.quantity} = ${totalOz} oz | pricePerItem=$${h.purchasePrice} | totalCost=$${(h.purchasePrice * h.quantity).toFixed(2)} | costPerOz=$${(h.purchasePrice * h.quantity / totalOz).toFixed(2)}`
         );
       }
       if (holdings.length > 5) console.log(`... and ${holdings.length - 5} more`);
