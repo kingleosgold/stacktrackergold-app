@@ -5,7 +5,9 @@ import { useHoldings } from '../hooks/useHoldings';
 import { useTheme } from '../hooks/useTheme';
 import type { Theme } from '../hooks/useTheme';
 import { useAuth } from '../contexts/AuthContext';
+import { useSubscription } from '../hooks/useSubscription';
 import { clearAllHoldings } from '../services/holdings';
+import { syncSubscription } from '../services/api';
 
 const APP_VERSION = '2.0.0';
 
@@ -173,6 +175,8 @@ export default function Settings() {
     user, isConfigured, signOut, linkWithGoogle, linkWithApple,
     updateEmailPassword, getLinkedProviders, hasEmailPassword,
   } = useAuth();
+  const { tier, refetch: refetchTier } = useSubscription();
+  const [syncingSubscription, setSyncingSubscription] = useState(false);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [showEmailForm, setShowEmailForm] = useState(false);
@@ -282,6 +286,25 @@ export default function Settings() {
     }
     if (jsonInputRef.current) jsonInputRef.current.value = '';
   };
+
+  const handleSyncSubscription = async () => {
+    if (!user) { showStatus('Sign in first to sync your subscription'); return; }
+    setSyncingSubscription(true);
+    try {
+      const result = await syncSubscription(user.id);
+      await refetchTier();
+      const t = result.tier || 'free';
+      const tierLabel = t === 'free' ? 'Free' : t === 'lifetime' ? 'Lifetime' : t.charAt(0).toUpperCase() + t.slice(1);
+      showStatus(`Synced! Your plan: ${tierLabel}`);
+    } catch (err) {
+      showStatus(`Failed: ${err instanceof Error ? err.message : "Couldn't sync subscription. Make sure you're signed in with the same account on mobile."}`);
+    } finally {
+      setSyncingSubscription(false);
+    }
+  };
+
+  const tierLabel = tier === 'free' ? 'Free' : tier === 'lifetime' ? 'Lifetime' : tier.charAt(0).toUpperCase() + tier.slice(1);
+  const tierDescription = tier === 'free' ? 'Basic portfolio tracking' : tier === 'lifetime' ? 'Lifetime access to all features' : `${tierLabel} member`;
 
   const inputClass = "w-full px-3 py-2.5 rounded-lg bg-[#0A0A0A] border border-border focus:border-gold/50 focus:outline-none text-sm";
 
@@ -432,12 +455,40 @@ export default function Settings() {
           <div className="py-3.5 px-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium">Free Plan</p>
-                <p className="text-xs text-text-muted">Basic portfolio tracking</p>
+                <p className="text-sm font-medium">{tierLabel} Plan</p>
+                <p className="text-xs text-text-muted">{tierDescription}</p>
               </div>
-              <span className="px-3 py-1 bg-gold/10 text-gold text-xs font-medium rounded-full">Free</span>
+              <span className={`px-3 py-1 text-xs font-medium rounded-full ${
+                tier === 'free' ? 'bg-gold/10 text-gold' : 'bg-green/10 text-green'
+              }`}>
+                {tierLabel}
+              </span>
             </div>
           </div>
+          {user && (
+            <div className="py-3.5 px-4">
+              <button
+                onClick={handleSyncSubscription}
+                disabled={syncingSubscription}
+                className="flex items-center gap-2 px-4 py-2.5 w-full bg-[#0A0A0A] border border-border rounded-lg hover:bg-surface-hover transition-colors disabled:opacity-50"
+              >
+                {syncingSubscription ? (
+                  <svg className="w-4 h-4 text-gold animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                ) : (
+                  <svg className="w-4 h-4 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182" />
+                  </svg>
+                )}
+                <div className="text-left">
+                  <p className="text-sm font-medium">{syncingSubscription ? 'Syncing...' : 'Sync Mobile Subscription'}</p>
+                  <p className="text-[11px] text-text-muted">Have a Gold or Lifetime subscription on iOS? Tap to sync it here.</p>
+                </div>
+              </button>
+            </div>
+          )}
         </SettingsSection>
 
         {/* Appearance */}

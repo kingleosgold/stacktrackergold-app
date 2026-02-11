@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 
@@ -9,6 +9,7 @@ interface UseSubscriptionReturn {
   loading: boolean;
   isGoldOrHigher: boolean;
   isPlatinum: boolean;
+  refetch: () => Promise<void>;
 }
 
 export function useSubscription(): UseSubscriptionReturn {
@@ -16,43 +17,38 @@ export function useSubscription(): UseSubscriptionReturn {
   const [tier, setTier] = useState<SubscriptionTier>('free');
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const fetchTier = useCallback(async () => {
     if (!user) {
       setTier('free');
       setLoading(false);
       return;
     }
 
-    let cancelled = false;
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('subscription_tier')
+        .eq('id', user.id)
+        .single();
 
-    async function fetchTier() {
-      try {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('subscription_tier')
-          .eq('id', user!.id)
-          .single();
-
-        if (!cancelled) {
-          if (error || !data) {
-            setTier('free');
-          } else {
-            setTier((data.subscription_tier as SubscriptionTier) || 'free');
-          }
-        }
-      } catch {
-        if (!cancelled) setTier('free');
-      } finally {
-        if (!cancelled) setLoading(false);
+      if (error || !data) {
+        setTier('free');
+      } else {
+        setTier((data.subscription_tier as SubscriptionTier) || 'free');
       }
+    } catch {
+      setTier('free');
+    } finally {
+      setLoading(false);
     }
-
-    fetchTier();
-    return () => { cancelled = true; };
   }, [user]);
+
+  useEffect(() => {
+    fetchTier();
+  }, [fetchTier]);
 
   const isGoldOrHigher = tier === 'gold' || tier === 'lifetime' || tier === 'platinum';
   const isPlatinum = tier === 'platinum';
 
-  return { tier, loading, isGoldOrHigher, isPlatinum };
+  return { tier, loading, isGoldOrHigher, isPlatinum, refetch: fetchTier };
 }

@@ -226,3 +226,21 @@ export async function fetchSpotPriceHistory(range = '1M'): Promise<SpotPriceHist
   }
   return response.json();
 }
+
+// ─── Subscription Sync ──────────────────────────────────────────
+
+export interface SyncSubscriptionResponse {
+  success: boolean;
+  tier?: string;
+  synced?: boolean;
+  error?: string;
+}
+
+export async function syncSubscription(userId: string): Promise<SyncSubscriptionResponse> {
+  const response = await fetch(`${API_BASE_URL}/api/sync-subscription?user_id=${encodeURIComponent(userId)}`);
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.error || `Sync failed: ${response.status}`);
+  }
+  return response.json();
+}
