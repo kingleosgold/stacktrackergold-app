@@ -1,13 +1,15 @@
-import { useMemo, useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { Area, AreaChart, ResponsiveContainer } from 'recharts';
+import { useMemo, useState, useEffect, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Area, AreaChart, ResponsiveContainer, LineChart, Line, XAxis, Tooltip, CartesianGrid } from 'recharts';
 import { useHoldings } from '../hooks/useHoldings';
 import { useSpotPrices } from '../hooks/useSpotPrices';
-import { fetchSparklineData } from '../services/api';
-import type { PriceLogEntry } from '../services/api';
+import { useSubscription } from '../hooks/useSubscription';
+import { fetchSparklineData, fetchIntelligence, fetchVaultData } from '../services/api';
+import type { PriceLogEntry, IntelligenceBrief, VaultDataPoint } from '../services/api';
 import { formatCurrency, formatPercent, formatChange } from '../utils/format';
 import { METAL_COLORS, METAL_LABELS, METALS } from '../utils/constants';
 import { CardSkeleton } from '../components/Skeleton';
+import { GatedContent } from '../components/GatedContent';
 import type { Metal } from '../types/holding';
 
 const container = {
@@ -29,6 +31,24 @@ const METAL_PRICE_KEY: Record<Metal, keyof PriceLogEntry> = {
   platinum: 'platinum_price',
   palladium: 'palladium_price',
 };
+
+const CATEGORY_COLORS: Record<string, string> = {
+  market_brief: '#D4A843',
+  breaking_news: '#F87171',
+  policy: '#60A5FA',
+  supply_demand: '#6BBF8A',
+  analysis: '#C084FC',
+};
+
+const CATEGORY_LABELS: Record<string, string> = {
+  market_brief: 'Market Brief',
+  breaking_news: 'Breaking News',
+  policy: 'Policy',
+  supply_demand: 'Supply & Demand',
+  analysis: 'Analysis',
+};
+
+// ─── Helper Components ────────────────────────────────────────
 
 function MiniSparkline({ data, color }: { data: { v: number }[]; color: string }) {
   if (data.length < 2) return null;
@@ -58,17 +78,242 @@ function MiniSparkline({ data, color }: { data: { v: number }[]; color: string }
   );
 }
 
+function IntelligenceBriefCard({
+  brief,
+  expanded,
+  onToggle,
+}: {
+  brief: IntelligenceBrief;
+  expanded: boolean;
+  onToggle: () => void;
+}) {
+  const borderColor = CATEGORY_COLORS[brief.category] || '#D4A843';
+  const categoryLabel = CATEGORY_LABELS[brief.category] || brief.category;
+  const time = new Date(brief.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+  return (
+    <motion.div
+      layout
+      onClick={onToggle}
+      className="rounded-lg bg-[#111] border border-border hover:border-border-light transition-colors cursor-pointer overflow-hidden"
+      style={{ borderLeftWidth: '3px', borderLeftColor: borderColor }}
+    >
+      <div className="p-4">
+        <div className="flex items-center gap-2 mb-2">
+          <span
+            className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full"
+            style={{ backgroundColor: `${borderColor}15`, color: borderColor }}
+          >
+            {categoryLabel}
+          </span>
+          <span className="text-[10px] text-text-muted">{time}</span>
+        </div>
+        <h4 className="text-sm font-semibold text-white leading-snug">{brief.title}</h4>
+        <AnimatePresence>
+          {expanded ? (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <p className="text-xs text-text-secondary mt-2 leading-relaxed">{brief.summary}</p>
+              {brief.source_url && (
+                <a
+                  href={brief.source_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="inline-flex items-center gap-1 text-[11px] text-gold hover:text-gold-hover mt-2 transition-colors"
+                >
+                  {brief.source || 'Source'}
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                  </svg>
+                </a>
+              )}
+            </motion.div>
+          ) : (
+            <p className="text-xs text-text-muted mt-1 line-clamp-2">{brief.summary}</p>
+          )}
+        </AnimatePresence>
+      </div>
+    </motion.div>
+  );
+}
+
+function VaultWatchPanel({
+  vaultData,
+  selectedMetal,
+  onSelectMetal,
+}: {
+  vaultData: Record<Metal, VaultDataPoint[]> | null;
+  selectedMetal: Metal;
+  onSelectMetal: (m: Metal) => void;
+}) {
+  const metalData = vaultData?.[selectedMetal] || [];
+  const latest = metalData.length > 0 ? metalData[metalData.length - 1] : null;
+
+  const formatMOz = (oz: number) => {
+    if (oz >= 1_000_000) return `${(oz / 1_000_000).toFixed(2)}M`;
+    if (oz >= 1_000) return `${(oz / 1_000).toFixed(1)}K`;
+    return oz.toFixed(0);
+  };
+
+  const ratioColor = (ratio: number) => {
+    if (ratio >= 1.0) return { color: '#22c55e', label: 'Healthy' };
+    if (ratio >= 0.5) return { color: '#eab308', label: 'Moderate' };
+    return { color: '#ef4444', label: 'Critical' };
+  };
+
+  const chartData = metalData.map((d) => ({
+    date: d.date.slice(5), // MM-DD
+    registered: d.registered_oz,
+    eligible: d.eligible_oz,
+  }));
+
+  const vaultMetals: Metal[] = ['gold', 'silver', 'platinum', 'palladium'];
+
+  return (
+    <div>
+      {/* Metal Tabs */}
+      <div className="flex gap-1 mb-4">
+        {vaultMetals.map((m) => (
+          <button
+            key={m}
+            onClick={() => onSelectMetal(m)}
+            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+              selectedMetal === m
+                ? 'bg-gold/15 text-gold'
+                : 'text-text-muted hover:text-text-secondary hover:bg-white/5'
+            }`}
+          >
+            {METAL_LABELS[m]}
+          </button>
+        ))}
+      </div>
+
+      {metalData.length === 0 ? (
+        <div className="text-center py-8">
+          <p className="text-xs text-text-muted">No COMEX vault data available for {METAL_LABELS[selectedMetal]}.</p>
+        </div>
+      ) : latest ? (
+        <>
+          {/* Stats Grid */}
+          <div className="grid grid-cols-2 gap-3 mb-4">
+            <div className="bg-[#111] rounded-lg p-3">
+              <p className="text-[10px] text-text-muted uppercase tracking-wider mb-1">Registered</p>
+              <p className="text-sm font-bold">{formatMOz(latest.registered_oz)} oz</p>
+            </div>
+            <div className="bg-[#111] rounded-lg p-3">
+              <p className="text-[10px] text-text-muted uppercase tracking-wider mb-1">Eligible</p>
+              <p className="text-sm font-bold">{formatMOz(latest.eligible_oz)} oz</p>
+            </div>
+            <div className="bg-[#111] rounded-lg p-3">
+              <p className="text-[10px] text-text-muted uppercase tracking-wider mb-1">Combined</p>
+              <p className="text-sm font-bold">{formatMOz(latest.combined_oz)} oz</p>
+            </div>
+            <div className="bg-[#111] rounded-lg p-3">
+              <p className="text-[10px] text-text-muted uppercase tracking-wider mb-1">Ratio</p>
+              <p className="text-sm font-bold" style={{ color: ratioColor(latest.oversubscribed_ratio).color }}>
+                {latest.oversubscribed_ratio.toFixed(2)}x{' '}
+                <span className="text-[10px] font-normal">{ratioColor(latest.oversubscribed_ratio).label}</span>
+              </p>
+            </div>
+          </div>
+
+          {/* 30-Day Chart */}
+          {chartData.length >= 2 && (
+            <div className="h-36">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#1e1e1e" />
+                  <XAxis
+                    dataKey="date"
+                    tick={{ fill: '#666', fontSize: 10 }}
+                    axisLine={false}
+                    tickLine={false}
+                    interval="preserveStartEnd"
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#1a1a1a',
+                      border: '1px solid #2a2a2a',
+                      borderRadius: '8px',
+                      fontSize: '12px',
+                    }}
+                    labelStyle={{ color: '#999' }}
+                    formatter={(value: number | undefined) =>
+                      value != null ? [formatMOz(value) + ' oz', ''] : ['--', '']
+                    }
+                  />
+                  <Line type="monotone" dataKey="registered" stroke="#D4A843" strokeWidth={1.5} dot={false} name="Registered" />
+                  <Line type="monotone" dataKey="eligible" stroke="#C0C0C0" strokeWidth={1.5} dot={false} name="Eligible" />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </>
+      ) : null}
+    </div>
+  );
+}
+
+// ─── Main Component ───────────────────────────────────────────
+
 export default function Today() {
   const { holdings, getTotalsByMetal, loading: holdingsLoading } = useHoldings();
   const { prices, loading: pricesLoading, lastUpdated } = useSpotPrices(60000);
+  const { isGoldOrHigher } = useSubscription();
   const [sparklineRaw, setSparklineRaw] = useState<PriceLogEntry[]>([]);
 
-  // Fetch real sparkline data from price_log
+  // Intelligence state
+  const [intelligence, setIntelligence] = useState<IntelligenceBrief[]>([]);
+  const [intelligenceLoading, setIntelligenceLoading] = useState(false);
+  const [expandedBriefId, setExpandedBriefId] = useState<string | null>(null);
+
+  // Vault state
+  const [vaultData, setVaultData] = useState<Record<Metal, VaultDataPoint[]> | null>(null);
+  const [vaultLoading, setVaultLoading] = useState(false);
+  const [selectedVaultMetal, setSelectedVaultMetal] = useState<Metal>('gold');
+
+  // Fetch sparkline data
   useEffect(() => {
     fetchSparklineData().then(setSparklineRaw).catch(console.error);
   }, []);
 
-  // Build per-metal sparkline data from real price_log
+  // Fetch intelligence (gold+ only, auto-refresh every 5 min)
+  const loadIntelligence = useCallback(async () => {
+    if (!isGoldOrHigher) return;
+    setIntelligenceLoading(true);
+    try {
+      const res = await fetchIntelligence();
+      setIntelligence(res.briefs || []);
+    } catch (e) {
+      console.error('Failed to fetch intelligence:', e);
+    } finally {
+      setIntelligenceLoading(false);
+    }
+  }, [isGoldOrHigher]);
+
+  useEffect(() => {
+    loadIntelligence();
+    if (!isGoldOrHigher) return;
+    const interval = setInterval(loadIntelligence, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [loadIntelligence, isGoldOrHigher]);
+
+  // Fetch vault data (gold+ only)
+  useEffect(() => {
+    if (!isGoldOrHigher) return;
+    setVaultLoading(true);
+    fetchVaultData('comex', 30)
+      .then((res) => setVaultData(res.data))
+      .catch((e) => console.error('Failed to fetch vault data:', e))
+      .finally(() => setVaultLoading(false));
+  }, [isGoldOrHigher]);
+
+  // Build per-metal sparkline data
   const sparklines = useMemo(() => {
     const result: Record<Metal, { v: number }[]> = {
       gold: [], silver: [], platinum: [], palladium: [],
@@ -82,22 +327,10 @@ export default function Today() {
     return result;
   }, [sparklineRaw]);
 
+  // Portfolio stats
   const stats = useMemo(() => {
     if (!prices) return null;
     const totals = getTotalsByMetal();
-
-    // Debug: log holdings data shape for BUG 1 diagnosis
-    if (holdings.length > 0) {
-      console.group('[Stack Tracker] Holdings data audit');
-      for (const h of holdings.slice(0, 5)) {
-        const totalOz = h.weight * h.quantity;
-        console.log(
-          `${h.metal} ${h.type}: weight=${h.weight} oz × qty=${h.quantity} = ${totalOz} oz | pricePerItem=$${h.purchasePrice} | totalCost=$${(h.purchasePrice * h.quantity).toFixed(2)} | costPerOz=$${(h.purchasePrice * h.quantity / totalOz).toFixed(2)}`
-        );
-      }
-      if (holdings.length > 5) console.log(`... and ${holdings.length - 5} more`);
-      console.groupEnd();
-    }
 
     let totalValue = 0;
     let totalCost = 0;
@@ -112,13 +345,7 @@ export default function Today() {
       totalValue += value;
       totalCost += data.totalCost;
 
-      return {
-        metal,
-        totalOz: data.totalOz,
-        value,
-        dailyImpact,
-        changePercent,
-      };
+      return { metal, totalOz: data.totalOz, value, dailyImpact, changePercent };
     }).filter((m) => m.totalOz > 0);
 
     const totalDailyChange = metalImpacts.reduce((sum, m) => sum + m.dailyImpact, 0);
@@ -133,9 +360,19 @@ export default function Today() {
     };
   }, [holdings, prices, getTotalsByMetal]);
 
+  // Sort metal movers by abs change percent
+  const sortedMetalMovers = useMemo(() => {
+    if (!prices) return METALS;
+    return [...METALS].sort((a, b) => {
+      const aChange = Math.abs(prices.change?.[a]?.percent || 0);
+      const bChange = Math.abs(prices.change?.[b]?.percent || 0);
+      return bChange - aChange;
+    });
+  }, [prices]);
+
   const isLoading = holdingsLoading || pricesLoading;
 
-  // Build a portfolio-level sparkline from real data
+  // Portfolio sparkline
   const portfolioSparkline = useMemo(() => {
     if (sparklineRaw.length < 2 || !holdings.length) return [];
     const totals = getTotalsByMetal();
@@ -150,7 +387,7 @@ export default function Today() {
   }, [sparklineRaw, holdings, getTotalsByMetal]);
 
   return (
-    <div className="max-w-5xl mx-auto p-4 md:p-6 lg:p-8">
+    <div className="max-w-7xl mx-auto p-4 md:p-6 lg:p-8">
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -8 }}
@@ -168,7 +405,7 @@ export default function Today() {
 
       <motion.div variants={container} initial="hidden" animate="show" className="space-y-6">
 
-        {/* Portfolio Pulse */}
+        {/* ─── Portfolio Pulse (FREE) ──────────────────────────── */}
         {isLoading ? (
           <CardSkeleton />
         ) : stats && holdings.length > 0 ? (
@@ -229,7 +466,7 @@ export default function Today() {
           </motion.div>
         ) : null}
 
-        {/* Metal Movers */}
+        {/* ─── Metal Movers (FREE) ────────────────────────────── */}
         <motion.div variants={item}>
           <h2 className="text-sm font-medium text-text-muted uppercase tracking-wider mb-3">Metal Movers</h2>
           {isLoading ? (
@@ -238,7 +475,7 @@ export default function Today() {
             </div>
           ) : prices ? (
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-              {METALS.map((metal) => {
+              {sortedMetalMovers.map((metal) => {
                 const price = prices[metal] || 0;
                 const change = prices.change?.[metal];
                 const changePercent = change?.percent || 0;
@@ -290,76 +527,176 @@ export default function Today() {
           ) : null}
         </motion.div>
 
-        {/* What Changed Today */}
-        {stats && stats.metalImpacts.length > 0 && (
-          <motion.div variants={item}>
-            <h2 className="text-sm font-medium text-text-muted uppercase tracking-wider mb-3">What Changed Today</h2>
-            <div className="rounded-xl bg-[#141414] border border-border divide-y divide-border">
-              {stats.metalImpacts.map((metal) => {
-                const isPositive = metal.dailyImpact >= 0;
-                return (
-                  <div
-                    key={metal.metal}
-                    className="flex items-center justify-between px-5 py-4"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div
-                        className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold"
-                        style={{
-                          backgroundColor: `${METAL_COLORS[metal.metal]}15`,
-                          color: METAL_COLORS[metal.metal],
-                        }}
-                      >
-                        {METAL_LABELS[metal.metal].slice(0, 2)}
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium">{METAL_LABELS[metal.metal]}</p>
-                        <p className="text-xs text-text-muted">{metal.totalOz.toFixed(3)} oz</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className={`text-sm font-semibold ${isPositive ? 'text-green' : 'text-red'}`}>
-                        {formatChange(metal.dailyImpact)}
-                      </p>
-                      <p className={`text-xs ${isPositive ? 'text-green/70' : 'text-red/70'}`}>
-                        {formatPercent(metal.changePercent)}
-                      </p>
-                    </div>
+        {/* ─── Two-Column Grid ────────────────────────────────── */}
+        <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_1fr] gap-6">
+
+          {/* LEFT COLUMN */}
+          <div className="space-y-6">
+
+            {/* What Changed Today (GOLD) */}
+            {stats && stats.metalImpacts.length > 0 && (
+              <motion.div variants={item}>
+                <h2 className="text-sm font-medium text-text-muted uppercase tracking-wider mb-3">What Changed Today</h2>
+                <GatedContent requiredTier="gold" featureName="What Changed Today">
+                  <div className="rounded-xl bg-[#141414] border border-border divide-y divide-border">
+                    {stats.metalImpacts.map((metal) => {
+                      const isPositive = metal.dailyImpact >= 0;
+                      return (
+                        <div
+                          key={metal.metal}
+                          className="flex items-center justify-between px-5 py-4"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div
+                              className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold"
+                              style={{
+                                backgroundColor: `${METAL_COLORS[metal.metal]}15`,
+                                color: METAL_COLORS[metal.metal],
+                              }}
+                            >
+                              {METAL_LABELS[metal.metal].slice(0, 2)}
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium">{METAL_LABELS[metal.metal]}</p>
+                              <p className="text-xs text-text-muted">{metal.totalOz.toFixed(3)} oz</p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className={`text-sm font-semibold ${isPositive ? 'text-green' : 'text-red'}`}>
+                              {formatChange(metal.dailyImpact)}
+                            </p>
+                            <p className={`text-xs ${isPositive ? 'text-green/70' : 'text-red/70'}`}>
+                              {formatPercent(metal.changePercent)}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                );
-              })}
-            </div>
-          </motion.div>
-        )}
+                </GatedContent>
+              </motion.div>
+            )}
 
-        {/* Intelligence Feed - Coming Soon */}
-        <motion.div variants={item}>
-          <h2 className="text-sm font-medium text-text-muted uppercase tracking-wider mb-3">Intelligence Feed</h2>
-          <div className="rounded-xl bg-[#141414] border border-border border-dashed p-8 text-center">
-            <div className="w-10 h-10 mx-auto rounded-full bg-gold/10 flex items-center justify-center mb-3">
-              <svg className="w-5 h-5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 7.5h1.5m-1.5 3h1.5m-7.5 3h7.5m-7.5 3h7.5m3-9h3.375c.621 0 1.125.504 1.125 1.125V18a2.25 2.25 0 01-2.25 2.25M16.5 7.5V18a2.25 2.25 0 002.25 2.25M16.5 7.5V4.875c0-.621-.504-1.125-1.125-1.125H4.125C3.504 3.75 3 4.254 3 4.875V18a2.25 2.25 0 002.25 2.25h13.5M6 7.5h3v3H6v-3z" />
-              </svg>
-            </div>
-            <p className="text-sm font-medium text-text-secondary">Coming Soon</p>
-            <p className="text-xs text-text-muted mt-1">Market news and analysis tailored to your stack</p>
+            {/* Intelligence Feed (GOLD) */}
+            <motion.div variants={item}>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-sm font-medium text-text-muted uppercase tracking-wider">Intelligence Feed</h2>
+                {intelligence.length > 0 && (
+                  <span className="text-[10px] text-text-muted bg-white/5 px-2 py-0.5 rounded-full">
+                    {intelligence.length} brief{intelligence.length !== 1 ? 's' : ''} today
+                  </span>
+                )}
+              </div>
+              <GatedContent requiredTier="gold" featureName="Intelligence Feed">
+                {intelligenceLoading ? (
+                  <div className="space-y-3">
+                    <CardSkeleton />
+                    <CardSkeleton />
+                  </div>
+                ) : intelligence.length > 0 ? (
+                  <motion.div
+                    variants={container}
+                    initial="hidden"
+                    animate="show"
+                    className="space-y-3"
+                  >
+                    {intelligence.map((brief) => (
+                      <motion.div key={brief.id} variants={item}>
+                        <IntelligenceBriefCard
+                          brief={brief}
+                          expanded={expandedBriefId === brief.id}
+                          onToggle={() =>
+                            setExpandedBriefId((prev) => (prev === brief.id ? null : brief.id))
+                          }
+                        />
+                      </motion.div>
+                    ))}
+                  </motion.div>
+                ) : (
+                  <div className="rounded-xl bg-[#141414] border border-border p-8 text-center">
+                    <div className="w-10 h-10 mx-auto rounded-full bg-gold/10 flex items-center justify-center mb-3">
+                      <svg className="w-5 h-5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 7.5h1.5m-1.5 3h1.5m-7.5 3h7.5m-7.5 3h7.5m3-9h3.375c.621 0 1.125.504 1.125 1.125V18a2.25 2.25 0 01-2.25 2.25M16.5 7.5V18a2.25 2.25 0 002.25 2.25M16.5 7.5V4.875c0-.621-.504-1.125-1.125-1.125H4.125C3.504 3.75 3 4.254 3 4.875V18a2.25 2.25 0 002.25 2.25h13.5M6 7.5h3v3H6v-3z" />
+                      </svg>
+                    </div>
+                    <p className="text-sm font-medium text-text-secondary">No briefs yet</p>
+                    <p className="text-xs text-text-muted mt-1">Intelligence briefing generates at 6:30 AM EST</p>
+                  </div>
+                )}
+              </GatedContent>
+            </motion.div>
           </div>
-        </motion.div>
 
-        {/* AI Brief - Coming Soon */}
-        <motion.div variants={item}>
-          <h2 className="text-sm font-medium text-text-muted uppercase tracking-wider mb-3">AI Market Brief</h2>
-          <div className="rounded-xl bg-[#141414] border border-border border-dashed p-8 text-center">
-            <div className="w-10 h-10 mx-auto rounded-full bg-gold/10 flex items-center justify-center mb-3">
-              <svg className="w-5 h-5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
-              </svg>
-            </div>
-            <p className="text-sm font-medium text-text-secondary">Coming Soon</p>
-            <p className="text-xs text-text-muted mt-1">AI-powered daily briefing on precious metals markets</p>
+          {/* RIGHT COLUMN */}
+          <div className="space-y-6">
+
+            {/* Vault Watch (GOLD) */}
+            <motion.div variants={item}>
+              <h2 className="text-sm font-medium text-text-muted uppercase tracking-wider mb-3">Vault Watch</h2>
+              <GatedContent requiredTier="gold" featureName="Vault Watch">
+                <div className="rounded-xl bg-[#141414] border border-border p-4">
+                  {vaultLoading ? (
+                    <CardSkeleton />
+                  ) : (
+                    <VaultWatchPanel
+                      vaultData={vaultData}
+                      selectedMetal={selectedVaultMetal}
+                      onSelectMetal={setSelectedVaultMetal}
+                    />
+                  )}
+                </div>
+              </GatedContent>
+            </motion.div>
+
+            {/* AI Daily Brief (PLATINUM) — Placeholder */}
+            <motion.div variants={item}>
+              <h2 className="text-sm font-medium text-text-muted uppercase tracking-wider mb-3">AI Daily Brief</h2>
+              <GatedContent requiredTier="platinum" featureName="AI Daily Brief">
+                <div className="rounded-xl bg-[#141414] border border-border p-6 text-center">
+                  <div className="w-10 h-10 mx-auto rounded-full bg-gold/10 flex items-center justify-center mb-3">
+                    <svg className="w-5 h-5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
+                    </svg>
+                  </div>
+                  <p className="text-sm font-medium text-text-secondary">AI-powered daily market analysis</p>
+                  <p className="text-xs text-text-muted mt-1">Personalized to your stack composition</p>
+                </div>
+              </GatedContent>
+            </motion.div>
+
+            {/* AI Stack Advisor (PLATINUM) — Placeholder */}
+            <motion.div variants={item}>
+              <h2 className="text-sm font-medium text-text-muted uppercase tracking-wider mb-3">AI Stack Advisor</h2>
+              <GatedContent requiredTier="platinum" featureName="AI Stack Advisor">
+                <div className="rounded-xl bg-[#141414] border border-border p-6 text-center">
+                  <div className="w-10 h-10 mx-auto rounded-full bg-gold/10 flex items-center justify-center mb-3">
+                    <svg className="w-5 h-5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3v11.25A2.25 2.25 0 006 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0118 16.5h-2.25m-7.5 0h7.5m-7.5 0l-1 3m8.5-3l1 3m0 0l.5 1.5m-.5-1.5h-9.5m0 0l-.5 1.5M9 11.25v1.5M12 9v3.75m3-6v6" />
+                    </svg>
+                  </div>
+                  <p className="text-sm font-medium text-text-secondary">Smart rebalancing suggestions</p>
+                  <p className="text-xs text-text-muted mt-1">AI-driven portfolio optimization advice</p>
+                </div>
+              </GatedContent>
+            </motion.div>
+
+            {/* AI Deal Finder (PLATINUM) — Placeholder */}
+            <motion.div variants={item}>
+              <h2 className="text-sm font-medium text-text-muted uppercase tracking-wider mb-3">AI Deal Finder</h2>
+              <GatedContent requiredTier="platinum" featureName="AI Deal Finder">
+                <div className="rounded-xl bg-[#141414] border border-border p-6 text-center">
+                  <div className="w-10 h-10 mx-auto rounded-full bg-gold/10 flex items-center justify-center mb-3">
+                    <svg className="w-5 h-5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z" />
+                    </svg>
+                  </div>
+                  <p className="text-sm font-medium text-text-secondary">Best deals across dealers</p>
+                  <p className="text-xs text-text-muted mt-1">Find the lowest premiums on metals you want</p>
+                </div>
+              </GatedContent>
+            </motion.div>
           </div>
-        </motion.div>
-
+        </div>
       </motion.div>
     </div>
   );
