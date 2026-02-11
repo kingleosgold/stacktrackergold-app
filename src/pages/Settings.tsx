@@ -32,7 +32,7 @@ function SettingsRow({ label, description, onClick, href, rightElement, danger }
   const content = (
     <>
       <div className="flex-1">
-        <p className={`text-sm ${danger ? 'text-red' : 'text-white'}`}>{label}</p>
+        <p className={`text-sm ${danger ? 'text-red' : 'text-text'}`}>{label}</p>
         {description && <p className="text-xs text-text-muted mt-0.5">{description}</p>}
       </div>
       {rightElement || (
@@ -43,7 +43,7 @@ function SettingsRow({ label, description, onClick, href, rightElement, danger }
     </>
   );
 
-  const cls = "flex items-center justify-between py-3.5 px-4 hover:bg-white/[0.02] transition-colors cursor-pointer";
+  const cls = "flex items-center justify-between py-3.5 px-4 hover:bg-text/[0.02] transition-colors cursor-pointer";
 
   if (href) {
     return (
@@ -66,7 +66,7 @@ function SettingsSection({ title, children }: { title: string; children: React.R
       <h2 className="text-[11px] font-medium text-text-muted uppercase tracking-wider mb-2 px-1">
         {title}
       </h2>
-      <div className="rounded-xl bg-[#141414] border border-border divide-y divide-border overflow-hidden">
+      <div className="rounded-xl bg-surface border border-border divide-y divide-border overflow-hidden">
         {children}
       </div>
     </motion.div>
@@ -105,7 +105,7 @@ function ThemeToggle({ theme, onChange }: { theme: Theme; onChange: (t: Theme) =
   ];
 
   return (
-    <div className="flex bg-[#0A0A0A] rounded-lg p-0.5">
+    <div className="flex bg-background rounded-lg p-0.5">
       {options.map((opt) => (
         <button
           key={opt.value}
@@ -140,14 +140,14 @@ function ConfirmModal({ isOpen, onClose, onConfirm, title, message, confirmText 
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-[#141414] border border-border rounded-xl max-w-sm w-full p-6"
+        className="bg-surface border border-border rounded-xl max-w-sm w-full p-6"
       >
         <h3 className="text-base font-semibold mb-2">{title}</h3>
         <p className="text-sm text-text-muted mb-5">{message}</p>
         <div className="flex gap-3">
           <button
             onClick={onClose}
-            className="flex-1 py-2.5 px-4 rounded-lg bg-[#0A0A0A] border border-border hover:bg-surface-hover text-sm transition-colors"
+            className="flex-1 py-2.5 px-4 rounded-lg bg-background border border-border hover:bg-surface-hover text-sm transition-colors"
           >
             Cancel
           </button>
@@ -155,7 +155,7 @@ function ConfirmModal({ isOpen, onClose, onConfirm, title, message, confirmText 
             onClick={() => { onConfirm(); onClose(); }}
             className={`flex-1 py-2.5 px-4 rounded-lg font-medium text-sm transition-colors ${
               danger
-                ? 'bg-red text-white hover:bg-red-600'
+                ? 'bg-red text-text hover:bg-red-600'
                 : 'bg-gold text-background hover:bg-gold-hover'
             }`}
           >
@@ -306,7 +306,7 @@ export default function Settings() {
   const tierLabel = tier === 'free' ? 'Free' : tier === 'lifetime' ? 'Lifetime' : tier.charAt(0).toUpperCase() + tier.slice(1);
   const tierDescription = tier === 'free' ? 'Basic portfolio tracking' : tier === 'lifetime' ? 'Lifetime access to all features' : `${tierLabel} member`;
 
-  const inputClass = "w-full px-3 py-2.5 rounded-lg bg-[#0A0A0A] border border-border focus:border-gold/50 focus:outline-none text-sm";
+  const inputClass = "w-full px-3 py-2.5 rounded-lg bg-background border border-border focus:border-gold/50 focus:outline-none text-sm";
 
   return (
     <div className="max-w-2xl mx-auto p-4 md:p-6 lg:p-8">
@@ -470,7 +470,7 @@ export default function Settings() {
               <button
                 onClick={handleSyncSubscription}
                 disabled={syncingSubscription}
-                className="flex items-center gap-2 px-4 py-2.5 w-full bg-[#0A0A0A] border border-border rounded-lg hover:bg-surface-hover transition-colors disabled:opacity-50"
+                className="flex items-center gap-2 px-4 py-2.5 w-full bg-background border border-border rounded-lg hover:bg-surface-hover transition-colors disabled:opacity-50"
               >
                 {syncingSubscription ? (
                   <svg className="w-4 h-4 text-gold animate-spin" fill="none" viewBox="0 0 24 24">

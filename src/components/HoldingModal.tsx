@@ -145,7 +145,7 @@ export default function HoldingModal({
   };
 
   const estimatedValue = getEstimatedValue();
-  const inputClass = "w-full px-3 py-2.5 rounded-lg bg-[#0A0A0A] border border-border focus:border-gold/50 focus:outline-none text-sm text-white placeholder-text-muted transition-colors";
+  const inputClass = "w-full px-3 py-2.5 rounded-lg bg-background border border-border focus:border-gold/50 focus:outline-none text-sm text-text placeholder-text-muted transition-colors";
   const labelClass = "block text-xs font-medium text-text-secondary mb-1.5";
 
   return (
@@ -167,7 +167,7 @@ export default function HoldingModal({
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-            className="fixed right-0 top-0 bottom-0 w-full max-w-lg bg-[#0e0e0e] border-l border-border z-50 overflow-y-auto"
+            className="fixed right-0 top-0 bottom-0 w-full max-w-lg bg-sidebar border-l border-border z-50 overflow-y-auto"
           >
             <div className="p-6">
               {/* Header */}
@@ -203,9 +203,9 @@ export default function HoldingModal({
                           backgroundColor: `${METAL_ACCENT[m]}15`,
                           color: METAL_ACCENT[m],
                         } : {
-                          borderColor: '#1e1e1e',
-                          backgroundColor: '#141414',
-                          color: '#707070',
+                          borderColor: 'var(--color-border)',
+                          backgroundColor: 'var(--color-surface)',
+                          color: 'var(--color-text-muted)',
                         }}
                       >
                         {m}
@@ -374,7 +374,7 @@ export default function HoldingModal({
                           <button
                             type="button"
                             onClick={onDelete}
-                            className="flex-1 py-2 px-3 rounded-lg bg-red text-white font-medium text-sm"
+                            className="flex-1 py-2 px-3 rounded-lg bg-red text-text font-medium text-sm"
                           >
                             Delete
                           </button>

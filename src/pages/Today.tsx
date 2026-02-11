@@ -95,7 +95,7 @@ function IntelligenceBriefCard({
     <motion.div
       layout
       onClick={onToggle}
-      className="rounded-lg bg-[#111] border border-border hover:border-border-light transition-colors cursor-pointer overflow-hidden"
+      className="rounded-lg bg-surface-alt border border-border hover:border-border-light transition-colors cursor-pointer overflow-hidden"
       style={{ borderLeftWidth: '3px', borderLeftColor: borderColor }}
     >
       <div className="p-4">
@@ -108,7 +108,7 @@ function IntelligenceBriefCard({
           </span>
           <span className="text-[10px] text-text-muted">{time}</span>
         </div>
-        <h4 className="text-sm font-semibold text-white leading-snug">{brief.title}</h4>
+        <h4 className="text-sm font-semibold text-text leading-snug">{brief.title}</h4>
         <AnimatePresence>
           {expanded ? (
             <motion.div
@@ -161,9 +161,9 @@ function VaultWatchPanel({
   };
 
   const ratioColor = (ratio: number) => {
-    if (ratio >= 1.0) return { color: '#22c55e', label: 'Healthy' };
+    if (ratio >= 1.0) return { color: 'var(--color-green)', label: 'Healthy' };
     if (ratio >= 0.5) return { color: '#eab308', label: 'Moderate' };
-    return { color: '#ef4444', label: 'Critical' };
+    return { color: 'var(--color-red)', label: 'Critical' };
   };
 
   const chartData = metalData.map((d) => ({
@@ -185,7 +185,7 @@ function VaultWatchPanel({
             className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
               selectedMetal === m
                 ? 'bg-gold/15 text-gold'
-                : 'text-text-muted hover:text-text-secondary hover:bg-white/5'
+                : 'text-text-muted hover:text-text-secondary hover:bg-text/5'
             }`}
           >
             {METAL_LABELS[m]}
@@ -201,19 +201,19 @@ function VaultWatchPanel({
         <>
           {/* Stats Grid */}
           <div className="grid grid-cols-2 gap-3 mb-4">
-            <div className="bg-[#111] rounded-lg p-3">
+            <div className="bg-surface-alt rounded-lg p-3">
               <p className="text-[10px] text-text-muted uppercase tracking-wider mb-1">Registered</p>
               <p className="text-sm font-bold">{formatMOz(latest.registered_oz)} oz</p>
             </div>
-            <div className="bg-[#111] rounded-lg p-3">
+            <div className="bg-surface-alt rounded-lg p-3">
               <p className="text-[10px] text-text-muted uppercase tracking-wider mb-1">Eligible</p>
               <p className="text-sm font-bold">{formatMOz(latest.eligible_oz)} oz</p>
             </div>
-            <div className="bg-[#111] rounded-lg p-3">
+            <div className="bg-surface-alt rounded-lg p-3">
               <p className="text-[10px] text-text-muted uppercase tracking-wider mb-1">Combined</p>
               <p className="text-sm font-bold">{formatMOz(latest.combined_oz)} oz</p>
             </div>
-            <div className="bg-[#111] rounded-lg p-3">
+            <div className="bg-surface-alt rounded-lg p-3">
               <p className="text-[10px] text-text-muted uppercase tracking-wider mb-1">Ratio</p>
               <p className="text-sm font-bold" style={{ color: ratioColor(latest.oversubscribed_ratio).color }}>
                 {latest.oversubscribed_ratio.toFixed(2)}x{' '}
@@ -227,22 +227,22 @@ function VaultWatchPanel({
             <div className="h-36">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#1e1e1e" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-chart-grid)" />
                   <XAxis
                     dataKey="date"
-                    tick={{ fill: '#666', fontSize: 10 }}
+                    tick={{ fill: 'var(--color-chart-label)', fontSize: 10 }}
                     axisLine={false}
                     tickLine={false}
                     interval="preserveStartEnd"
                   />
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: '#1a1a1a',
-                      border: '1px solid #2a2a2a',
+                      backgroundColor: 'var(--color-chart-bg)',
+                      border: '1px solid var(--color-chart-border)',
                       borderRadius: '8px',
                       fontSize: '12px',
                     }}
-                    labelStyle={{ color: '#999' }}
+                    labelStyle={{ color: 'var(--color-text-secondary)' }}
                     formatter={(value: number | undefined) =>
                       value != null ? [formatMOz(value) + ' oz', ''] : ['--', '']
                     }
@@ -411,7 +411,7 @@ export default function Today() {
         ) : stats && holdings.length > 0 ? (
           <motion.div
             variants={item}
-            className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#1a1708] via-[#141414] to-[#141414] border border-gold/10 p-6"
+            className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-gold-contrast via-surface to-surface border border-gold/10 p-6"
           >
             <div className="absolute top-0 right-0 w-48 h-48 bg-gold/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/4" />
             <div className="relative">
@@ -439,7 +439,7 @@ export default function Today() {
                 {portfolioSparkline.length >= 2 && (
                   <MiniSparkline
                     data={portfolioSparkline}
-                    color={stats.totalDailyChange >= 0 ? '#22c55e' : '#ef4444'}
+                    color={stats.totalDailyChange >= 0 ? 'var(--color-green)' : 'var(--color-red)'}
                   />
                 )}
               </div>
@@ -448,14 +448,14 @@ export default function Today() {
         ) : !isLoading && holdings.length === 0 ? (
           <motion.div
             variants={item}
-            className="rounded-2xl bg-[#141414] border border-border p-8 text-center"
+            className="rounded-2xl bg-surface border border-border p-8 text-center"
           >
             <div className="w-12 h-12 mx-auto rounded-full bg-gold/10 flex items-center justify-center mb-4">
               <svg className="w-6 h-6 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m6-6H6" />
               </svg>
             </div>
-            <h3 className="font-semibold text-white mb-1">Start Your Stack</h3>
+            <h3 className="font-semibold text-text mb-1">Start Your Stack</h3>
             <p className="text-sm text-text-muted mb-4">Add your first holding to see your portfolio pulse.</p>
             <a
               href="/portfolio"
@@ -468,7 +468,8 @@ export default function Today() {
 
         {/* ─── Metal Movers (FREE) ────────────────────────────── */}
         <motion.div variants={item}>
-          <h2 className="text-sm font-medium text-text-muted uppercase tracking-wider mb-3">Metal Movers</h2>
+          <h2 className="text-sm font-medium text-text-muted uppercase tracking-wider mb-0.5">Metal Movers</h2>
+          <p className="text-[11px] text-text-muted mb-3">Live spot prices sorted by today's biggest moves</p>
           {isLoading ? (
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
               {[1, 2, 3, 4].map((i) => <CardSkeleton key={i} />)}
@@ -489,7 +490,7 @@ export default function Today() {
                     key={metal}
                     whileHover={{ y: -2 }}
                     transition={{ duration: 0.2 }}
-                    className="relative rounded-xl bg-[#141414] border border-border hover:border-border-light p-4 transition-colors"
+                    className="relative rounded-xl bg-surface border border-border hover:border-border-light p-4 transition-colors"
                   >
                     <div
                       className="absolute top-0 left-0 right-0 h-[2px] rounded-t-xl"
@@ -536,9 +537,10 @@ export default function Today() {
             {/* What Changed Today (GOLD) */}
             {stats && stats.metalImpacts.length > 0 && (
               <motion.div variants={item}>
-                <h2 className="text-sm font-medium text-text-muted uppercase tracking-wider mb-3">What Changed Today</h2>
+                <h2 className="text-sm font-medium text-text-muted uppercase tracking-wider mb-0.5">What Changed Today</h2>
+                <p className="text-[11px] text-text-muted mb-3">How today's price moves affected your holdings</p>
                 <GatedContent requiredTier="gold" featureName="What Changed Today">
-                  <div className="rounded-xl bg-[#141414] border border-border divide-y divide-border">
+                  <div className="rounded-xl bg-surface border border-border divide-y divide-border">
                     {stats.metalImpacts.map((metal) => {
                       const isPositive = metal.dailyImpact >= 0;
                       return (
@@ -580,9 +582,12 @@ export default function Today() {
             {/* Intelligence Feed (GOLD) */}
             <motion.div variants={item}>
               <div className="flex items-center justify-between mb-3">
-                <h2 className="text-sm font-medium text-text-muted uppercase tracking-wider">Intelligence Feed</h2>
+                <div>
+                  <h2 className="text-sm font-medium text-text-muted uppercase tracking-wider mb-0.5">Intelligence Feed</h2>
+                  <p className="text-[11px] text-text-muted">AI-curated precious metals news and analysis</p>
+                </div>
                 {intelligence.length > 0 && (
-                  <span className="text-[10px] text-text-muted bg-white/5 px-2 py-0.5 rounded-full">
+                  <span className="text-[10px] text-text-muted bg-text/5 px-2 py-0.5 rounded-full">
                     {intelligence.length} brief{intelligence.length !== 1 ? 's' : ''} today
                   </span>
                 )}
@@ -613,7 +618,7 @@ export default function Today() {
                     ))}
                   </motion.div>
                 ) : (
-                  <div className="rounded-xl bg-[#141414] border border-border p-8 text-center">
+                  <div className="rounded-xl bg-surface border border-border p-8 text-center">
                     <div className="w-10 h-10 mx-auto rounded-full bg-gold/10 flex items-center justify-center mb-3">
                       <svg className="w-5 h-5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M12 7.5h1.5m-1.5 3h1.5m-7.5 3h7.5m-7.5 3h7.5m3-9h3.375c.621 0 1.125.504 1.125 1.125V18a2.25 2.25 0 01-2.25 2.25M16.5 7.5V18a2.25 2.25 0 002.25 2.25M16.5 7.5V4.875c0-.621-.504-1.125-1.125-1.125H4.125C3.504 3.75 3 4.254 3 4.875V18a2.25 2.25 0 002.25 2.25h13.5M6 7.5h3v3H6v-3z" />
@@ -632,9 +637,10 @@ export default function Today() {
 
             {/* Vault Watch (GOLD) */}
             <motion.div variants={item}>
-              <h2 className="text-sm font-medium text-text-muted uppercase tracking-wider mb-3">Vault Watch</h2>
+              <h2 className="text-sm font-medium text-text-muted uppercase tracking-wider mb-0.5">Vault Watch</h2>
+              <p className="text-[11px] text-text-muted mb-3">COMEX warehouse inventory — physical metal backing futures contracts</p>
               <GatedContent requiredTier="gold" featureName="Vault Watch">
-                <div className="rounded-xl bg-[#141414] border border-border p-4">
+                <div className="rounded-xl bg-surface border border-border p-4">
                   {vaultLoading ? (
                     <CardSkeleton />
                   ) : (
@@ -652,7 +658,7 @@ export default function Today() {
             <motion.div variants={item}>
               <h2 className="text-sm font-medium text-text-muted uppercase tracking-wider mb-3">AI Daily Brief</h2>
               <GatedContent requiredTier="platinum" featureName="AI Daily Brief">
-                <div className="rounded-xl bg-[#141414] border border-border p-6 text-center">
+                <div className="rounded-xl bg-surface border border-border p-6 text-center">
                   <div className="w-10 h-10 mx-auto rounded-full bg-gold/10 flex items-center justify-center mb-3">
                     <svg className="w-5 h-5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
@@ -668,7 +674,7 @@ export default function Today() {
             <motion.div variants={item}>
               <h2 className="text-sm font-medium text-text-muted uppercase tracking-wider mb-3">AI Stack Advisor</h2>
               <GatedContent requiredTier="platinum" featureName="AI Stack Advisor">
-                <div className="rounded-xl bg-[#141414] border border-border p-6 text-center">
+                <div className="rounded-xl bg-surface border border-border p-6 text-center">
                   <div className="w-10 h-10 mx-auto rounded-full bg-gold/10 flex items-center justify-center mb-3">
                     <svg className="w-5 h-5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3v11.25A2.25 2.25 0 006 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0118 16.5h-2.25m-7.5 0h7.5m-7.5 0l-1 3m8.5-3l1 3m0 0l.5 1.5m-.5-1.5h-9.5m0 0l-.5 1.5M9 11.25v1.5M12 9v3.75m3-6v6" />
@@ -684,7 +690,7 @@ export default function Today() {
             <motion.div variants={item}>
               <h2 className="text-sm font-medium text-text-muted uppercase tracking-wider mb-3">AI Deal Finder</h2>
               <GatedContent requiredTier="platinum" featureName="AI Deal Finder">
-                <div className="rounded-xl bg-[#141414] border border-border p-6 text-center">
+                <div className="rounded-xl bg-surface border border-border p-6 text-center">
                   <div className="w-10 h-10 mx-auto rounded-full bg-gold/10 flex items-center justify-center mb-3">
                     <svg className="w-5 h-5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z" />

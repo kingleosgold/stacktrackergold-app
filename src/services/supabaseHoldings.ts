@@ -52,6 +52,36 @@ function cleanType(raw: unknown): string {
   return String(raw);
 }
 
+// Strip raw metadata / JSON from the notes field.
+// The mobile app sometimes stores JSON metadata in notes (local_id, cost_basis, etc.).
+function cleanNotes(raw: unknown): string | undefined {
+  if (raw == null) return undefined;
+  const str = typeof raw === 'string' ? raw.trim() : String(raw).trim();
+  if (!str) return undefined;
+
+  // If the entire notes field looks like JSON metadata, discard it
+  if (str.startsWith('{') || str.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(str);
+      if (typeof parsed === 'object' && parsed !== null) {
+        // Check for common metadata keys — if present, it's not a real note
+        if ('local_id' in parsed || 'source' in parsed || 'cost_basis' in parsed || 'created_at' in parsed) {
+          return undefined;
+        }
+      }
+    } catch {
+      // Not valid JSON — might be user-written text starting with { — keep it
+    }
+  }
+
+  // Also strip if it contains telltale metadata substrings
+  if (/\blocal_id\b/.test(str) || /\bcost_basis\b/.test(str)) {
+    return undefined;
+  }
+
+  return str;
+}
+
 // Convert Supabase holding to local format
 function fromSupabaseHolding(row: any): Holding {
   return {
@@ -63,7 +93,7 @@ function fromSupabaseHolding(row: any): Holding {
     quantity: row.quantity,
     purchasePrice: row.purchase_price,
     purchaseDate: row.purchase_date,
-    notes: row.notes || undefined,
+    notes: cleanNotes(row.notes),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

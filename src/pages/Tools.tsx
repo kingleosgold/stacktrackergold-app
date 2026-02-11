@@ -28,7 +28,7 @@ const JUNK_SILVER_COINS: Record<string, { label: string; ozPerDollar: number; de
 
 function ToolSection({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) {
   return (
-    <motion.div variants={item} className="rounded-xl bg-[#141414] border border-border overflow-hidden">
+    <motion.div variants={item} className="rounded-xl bg-surface border border-border overflow-hidden">
       <div className="flex items-center gap-3 px-5 py-4 border-b border-border">
         <div className="w-8 h-8 rounded-lg bg-gold/10 flex items-center justify-center text-gold">
           {icon}
@@ -100,7 +100,7 @@ function WhatIfTool() {
                   {METAL_LABELS[metal]}
                 </span>
                 <span className="text-xs text-text-muted">
-                  {formatCurrency(currentPrice)} → <span className="text-white">{formatCurrency(projectedPrice)}</span>
+                  {formatCurrency(currentPrice)} → <span className="text-text">{formatCurrency(projectedPrice)}</span>
                 </span>
               </div>
               <div className="flex items-center gap-3">
@@ -162,7 +162,7 @@ function JunkSilverCalculator() {
         <select
           value={coinType}
           onChange={(e) => setCoinType(e.target.value)}
-          className="w-full px-3 py-2.5 rounded-lg bg-[#0A0A0A] border border-border focus:border-gold/50 focus:outline-none text-sm"
+          className="w-full px-3 py-2.5 rounded-lg bg-background border border-border focus:border-gold/50 focus:outline-none text-sm"
         >
           {Object.entries(JUNK_SILVER_COINS).map(([key, coin]) => (
             <option key={key} value={key}>{coin.label}</option>
@@ -178,7 +178,7 @@ function JunkSilverCalculator() {
           min="0"
           value={faceValue}
           onChange={(e) => setFaceValue(e.target.value)}
-          className="w-full px-3 py-2.5 rounded-lg bg-[#0A0A0A] border border-border focus:border-gold/50 focus:outline-none text-sm"
+          className="w-full px-3 py-2.5 rounded-lg bg-background border border-border focus:border-gold/50 focus:outline-none text-sm"
           placeholder="10.00"
         />
       </div>
@@ -263,7 +263,7 @@ function BreakEvenAnalysis() {
                 className="h-full rounded-full transition-all"
                 style={{
                   width: `${Math.min(100, Math.max(0, (a.currentPrice / a.breakEvenPrice) * 100))}%`,
-                  backgroundColor: aboveBreakEven ? '#22c55e' : '#ef4444',
+                  backgroundColor: aboveBreakEven ? 'var(--color-green)' : 'var(--color-red)',
                 }}
               />
             </div>
@@ -303,7 +303,7 @@ function GSRSwapCalculator() {
           min="0"
           value={goldOz}
           onChange={(e) => setGoldOz(e.target.value)}
-          className="w-full px-3 py-2.5 rounded-lg bg-[#0A0A0A] border border-border focus:border-gold/50 focus:outline-none text-sm"
+          className="w-full px-3 py-2.5 rounded-lg bg-background border border-border focus:border-gold/50 focus:outline-none text-sm"
           placeholder="1"
         />
       </div>

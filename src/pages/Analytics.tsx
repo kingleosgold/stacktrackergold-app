@@ -38,13 +38,13 @@ const TIME_RANGES = ['1W', '1M', '3M', '6M', '1Y', 'All'] as const;
 
 const tooltipStyle = {
   contentStyle: {
-    backgroundColor: '#1a1a1a',
-    border: '1px solid #2a2a2a',
+    backgroundColor: 'var(--color-chart-bg)',
+    border: '1px solid var(--color-chart-border)',
     borderRadius: '8px',
     fontSize: '12px',
   },
-  labelStyle: { color: '#999' },
-  itemStyle: { color: '#fff' },
+  labelStyle: { color: 'var(--color-text-secondary)' },
+  itemStyle: { color: 'var(--color-text)' },
 };
 
 function StatCard({ label, value, subtext, color }: {
@@ -54,9 +54,9 @@ function StatCard({ label, value, subtext, color }: {
   color?: string;
 }) {
   return (
-    <motion.div variants={item} className="p-4 rounded-xl bg-[#141414] border border-border">
+    <motion.div variants={item} className="p-4 rounded-xl bg-surface border border-border">
       <p className="text-xs text-text-muted mb-1">{label}</p>
-      <p className={`text-lg font-bold ${color || 'text-white'}`}>{value}</p>
+      <p className={`text-lg font-bold ${color || 'text-text'}`}>{value}</p>
       {subtext && <p className="text-xs text-text-muted mt-0.5">{subtext}</p>}
     </motion.div>
   );
@@ -187,7 +187,7 @@ export default function Analytics() {
         totals.palladium.totalOz * (point.palladium || 0);
       const d = new Date(point.date);
       return {
-        date: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        date: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
         value: Math.round(value * 100) / 100,
       };
     });
@@ -214,13 +214,13 @@ export default function Analytics() {
     return (
       <div className="max-w-6xl mx-auto p-4 md:p-6 lg:p-8">
         <h1 className="text-2xl font-bold tracking-tight mb-6">Analytics</h1>
-        <div className="rounded-2xl bg-[#141414] border border-border p-12 text-center">
+        <div className="rounded-2xl bg-surface border border-border p-12 text-center">
           <div className="w-14 h-14 mx-auto rounded-full bg-gold/10 flex items-center justify-center mb-4">
             <svg className="w-7 h-7 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75z" />
             </svg>
           </div>
-          <h3 className="text-lg font-semibold text-white mb-2">No Data Yet</h3>
+          <h3 className="text-lg font-semibold text-text mb-2">No Data Yet</h3>
           <p className="text-sm text-text-muted">Add holdings to unlock portfolio analytics.</p>
         </div>
       </div>
@@ -262,7 +262,7 @@ export default function Analytics() {
         </div>
 
         {/* Portfolio Value Chart */}
-        <motion.div variants={item} className="rounded-xl bg-[#141414] border border-border p-5">
+        <motion.div variants={item} className="rounded-xl bg-surface border border-border p-5">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-semibold">Portfolio Value</h2>
             <div className="flex gap-1">
@@ -290,16 +290,16 @@ export default function Analytics() {
                     <stop offset="100%" stopColor="#D4A843" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e1e1e" />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-chart-grid)" />
                 <XAxis
                   dataKey="date"
-                  tick={{ fill: '#707070', fontSize: 11 }}
-                  axisLine={{ stroke: '#1e1e1e' }}
+                  tick={{ fill: 'var(--color-chart-label)', fontSize: 11 }}
+                  axisLine={{ stroke: 'var(--color-chart-grid)' }}
                   tickLine={false}
                   interval="preserveStartEnd"
                 />
                 <YAxis
-                  tick={{ fill: '#707070', fontSize: 11 }}
+                  tick={{ fill: 'var(--color-chart-label)', fontSize: 11 }}
                   axisLine={false}
                   tickLine={false}
                   tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`}
@@ -325,7 +325,7 @@ export default function Analytics() {
         {/* Allocation Pie + Cost vs Value Bar */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Pie Chart */}
-          <motion.div variants={item} className="rounded-xl bg-[#141414] border border-border p-5">
+          <motion.div variants={item} className="rounded-xl bg-surface border border-border p-5">
             <h2 className="text-sm font-semibold mb-4">Allocation by Metal</h2>
             <div className="h-56">
               <ResponsiveContainer width="100%" height="100%">
@@ -364,20 +364,20 @@ export default function Analytics() {
           </motion.div>
 
           {/* Cost vs Value Bar Chart */}
-          <motion.div variants={item} className="rounded-xl bg-[#141414] border border-border p-5">
+          <motion.div variants={item} className="rounded-xl bg-surface border border-border p-5">
             <h2 className="text-sm font-semibold mb-4">Cost Basis vs Current Value</h2>
             <div className="h-56">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={stats.costVsValue} barGap={2}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#1e1e1e" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-chart-grid)" />
                   <XAxis
                     dataKey="name"
-                    tick={{ fill: '#707070', fontSize: 11 }}
-                    axisLine={{ stroke: '#1e1e1e' }}
+                    tick={{ fill: 'var(--color-chart-label)', fontSize: 11 }}
+                    axisLine={{ stroke: 'var(--color-chart-grid)' }}
                     tickLine={false}
                   />
                   <YAxis
-                    tick={{ fill: '#707070', fontSize: 11 }}
+                    tick={{ fill: 'var(--color-chart-label)', fontSize: 11 }}
                     axisLine={false}
                     tickLine={false}
                     tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`}
@@ -387,14 +387,14 @@ export default function Analytics() {
                     formatter={(value, name) => [formatCurrency(Number(value)), name === 'cost' ? 'Cost Basis' : 'Current Value']}
                     {...tooltipStyle}
                   />
-                  <Bar dataKey="cost" fill="#707070" radius={[4, 4, 0, 0]} name="Cost Basis" />
+                  <Bar dataKey="cost" fill="var(--color-text-muted)" radius={[4, 4, 0, 0]} name="Cost Basis" />
                   <Bar dataKey="value" fill="#D4A843" radius={[4, 4, 0, 0]} name="Current Value" />
                 </BarChart>
               </ResponsiveContainer>
             </div>
             <div className="flex justify-center gap-6 mt-2">
               <div className="flex items-center gap-2">
-                <div className="w-2.5 h-2.5 rounded-sm bg-[#707070]" />
+                <div className="w-2.5 h-2.5 rounded-sm bg-text-muted" />
                 <span className="text-xs text-text-muted">Cost Basis</span>
               </div>
               <div className="flex items-center gap-2">
@@ -408,7 +408,7 @@ export default function Analytics() {
         {/* Best/Worst Purchases */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {stats.bestPurchase && (
-            <motion.div variants={item} className="rounded-xl bg-[#141414] border border-border p-5">
+            <motion.div variants={item} className="rounded-xl bg-surface border border-border p-5">
               <div className="flex items-center gap-2 mb-3">
                 <div className="w-6 h-6 rounded-full bg-green/10 flex items-center justify-center">
                   <svg className="w-3.5 h-3.5 text-green" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
@@ -417,7 +417,7 @@ export default function Analytics() {
                 </div>
                 <h2 className="text-sm font-semibold">Best Purchase (by Premium)</h2>
               </div>
-              <p className="text-white font-medium">{stats.bestPurchase.type}</p>
+              <p className="text-text font-medium">{stats.bestPurchase.type}</p>
               <p className="text-xs text-text-muted capitalize">{stats.bestPurchase.metal}</p>
               <p className={`text-sm font-semibold mt-1 ${stats.bestPurchase.premium <= 0 ? 'text-green' : 'text-gold'}`}>
                 {stats.bestPurchase.premium > 0 ? '+' : ''}{stats.bestPurchase.premium.toFixed(1)}% over spot
@@ -425,7 +425,7 @@ export default function Analytics() {
             </motion.div>
           )}
           {stats.worstPurchase && (
-            <motion.div variants={item} className="rounded-xl bg-[#141414] border border-border p-5">
+            <motion.div variants={item} className="rounded-xl bg-surface border border-border p-5">
               <div className="flex items-center gap-2 mb-3">
                 <div className="w-6 h-6 rounded-full bg-red/10 flex items-center justify-center">
                   <svg className="w-3.5 h-3.5 text-red" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
@@ -434,7 +434,7 @@ export default function Analytics() {
                 </div>
                 <h2 className="text-sm font-semibold">Highest Premium Purchase</h2>
               </div>
-              <p className="text-white font-medium">{stats.worstPurchase.type}</p>
+              <p className="text-text font-medium">{stats.worstPurchase.type}</p>
               <p className="text-xs text-text-muted capitalize">{stats.worstPurchase.metal}</p>
               <p className="text-sm font-semibold mt-1 text-red">
                 +{stats.worstPurchase.premium.toFixed(1)}% over spot

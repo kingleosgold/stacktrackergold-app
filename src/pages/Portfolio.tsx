@@ -25,9 +25,9 @@ function SummaryCard({ label, value, subtext, color }: {
   color?: string;
 }) {
   return (
-    <motion.div variants={item} className="p-4 rounded-xl bg-[#141414] border border-border">
+    <motion.div variants={item} className="p-4 rounded-xl bg-surface border border-border">
       <p className="text-xs text-text-muted mb-1">{label}</p>
-      <p className={`text-xl font-bold ${color || 'text-white'}`}>{value}</p>
+      <p className={`text-xl font-bold ${color || 'text-text'}`}>{value}</p>
       {subtext && <p className="text-xs text-text-muted mt-1">{subtext}</p>}
     </motion.div>
   );
@@ -196,7 +196,7 @@ export default function Portfolio() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search holdings... (press /)"
-              className="w-full pl-10 pr-4 py-2.5 rounded-lg bg-[#141414] border border-border focus:border-gold/50 focus:outline-none text-sm placeholder-text-muted transition-colors"
+              className="w-full pl-10 pr-4 py-2.5 rounded-lg bg-surface border border-border focus:border-gold/50 focus:outline-none text-sm placeholder-text-muted transition-colors"
             />
           </div>
           <div className="flex gap-1.5 flex-wrap">
@@ -205,7 +205,7 @@ export default function Portfolio() {
               className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
                 filterMetal === 'all'
                   ? 'bg-gold/15 text-gold border border-gold/30'
-                  : 'bg-[#141414] text-text-muted border border-border hover:border-border-light'
+                  : 'bg-surface text-text-muted border border-border hover:border-border-light'
               }`}
             >
               All
@@ -220,9 +220,9 @@ export default function Portfolio() {
                   color: METAL_COLORS[m],
                   borderColor: `${METAL_COLORS[m]}40`,
                 } : {
-                  backgroundColor: '#141414',
-                  color: '#707070',
-                  borderColor: '#1e1e1e',
+                  backgroundColor: 'var(--color-surface)',
+                  color: 'var(--color-text-muted)',
+                  borderColor: 'var(--color-border)',
                 }}
               >
                 {METAL_LABELS[m]}
@@ -234,21 +234,21 @@ export default function Portfolio() {
 
       {/* Holdings List */}
       {loading ? (
-        <div className="rounded-xl bg-[#141414] border border-border overflow-hidden">
+        <div className="rounded-xl bg-surface border border-border overflow-hidden">
           {[1, 2, 3, 4, 5].map((i) => <TableRowSkeleton key={i} />)}
         </div>
       ) : holdings.length === 0 ? (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="rounded-2xl bg-[#141414] border border-border p-12 text-center"
+          className="rounded-2xl bg-surface border border-border p-12 text-center"
         >
           <div className="w-14 h-14 mx-auto rounded-full bg-gold/10 flex items-center justify-center mb-4">
             <svg className="w-7 h-7 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375" />
             </svg>
           </div>
-          <h3 className="text-lg font-semibold text-white mb-2">No Holdings Yet</h3>
+          <h3 className="text-lg font-semibold text-text mb-2">No Holdings Yet</h3>
           <p className="text-sm text-text-muted mb-6 max-w-xs mx-auto">
             Start building your precious metals portfolio by adding your first holding.
           </p>
@@ -261,11 +261,11 @@ export default function Portfolio() {
           <p className="text-xs text-text-muted mt-3">Press <kbd className="px-1.5 py-0.5 rounded bg-surface border border-border text-[10px]">N</kbd> to quick add</p>
         </motion.div>
       ) : filteredHoldings.length === 0 ? (
-        <div className="rounded-xl bg-[#141414] border border-border p-8 text-center">
+        <div className="rounded-xl bg-surface border border-border p-8 text-center">
           <p className="text-text-muted text-sm">No holdings match your search.</p>
         </div>
       ) : (
-        <div className="rounded-xl bg-[#141414] border border-border overflow-hidden">
+        <div className="rounded-xl bg-surface border border-border overflow-hidden">
           {/* Table Header */}
           <div className="hidden md:grid md:grid-cols-[1fr_1.5fr_0.8fr_0.8fr_1fr_1fr_1fr_0.5fr] gap-2 px-5 py-3 border-b border-border text-xs text-text-muted font-medium">
             <span>Metal</span>
@@ -296,7 +296,7 @@ export default function Portfolio() {
                   key={holding.id}
                   variants={item}
                   onClick={() => setEditingHolding(holding)}
-                  className="grid grid-cols-2 md:grid-cols-[1fr_1.5fr_0.8fr_0.8fr_1fr_1fr_1fr_0.5fr] gap-2 px-5 py-4 border-b border-border hover:bg-white/[0.02] cursor-pointer transition-colors"
+                  className="grid grid-cols-2 md:grid-cols-[1fr_1.5fr_0.8fr_0.8fr_1fr_1fr_1fr_0.5fr] gap-2 px-5 py-4 border-b border-border hover:bg-text/[0.02] cursor-pointer transition-colors"
                 >
                   {/* Metal Badge */}
                   <div className="flex items-center">
@@ -365,7 +365,7 @@ export default function Portfolio() {
           </motion.div>
 
           {/* Footer */}
-          <div className="px-5 py-3 bg-[#111111] text-xs text-text-muted flex items-center justify-between">
+          <div className="px-5 py-3 bg-surface-alt text-xs text-text-muted flex items-center justify-between">
             <span>{filteredHoldings.length} holding{filteredHoldings.length !== 1 ? 's' : ''}</span>
             <span>Press <kbd className="px-1.5 py-0.5 rounded bg-surface border border-border text-[10px]">N</kbd> to add</span>
           </div>

@@ -40,13 +40,13 @@ export class ErrorBoundary extends Component<Props, State> {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
             </svg>
           </div>
-          <h3 className="text-lg font-semibold text-white mb-2">Something went wrong</h3>
-          <p className="text-[#707070] text-sm mb-6 text-center max-w-md">
+          <h3 className="text-lg font-semibold text-text mb-2">Something went wrong</h3>
+          <p className="text-text-muted text-sm mb-6 text-center max-w-md">
             {this.state.error?.message || 'An unexpected error occurred'}
           </p>
           <button
             onClick={this.handleRetry}
-            className="px-6 py-2.5 bg-[#D4A843] text-[#0A0A0A] font-medium rounded-lg hover:bg-[#e0b84e] transition-colors"
+            className="px-6 py-2.5 bg-gold text-background font-medium rounded-lg hover:bg-gold-hover transition-colors"
           >
             Try Again
           </button>

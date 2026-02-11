@@ -58,14 +58,10 @@ export default function Layout() {
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-background">
       {/* Desktop Sidebar */}
-      <aside className="hidden md:flex flex-col w-[220px] min-h-screen bg-[#0e0e0e] border-r border-border">
+      <aside className="hidden md:flex flex-col w-[220px] min-h-screen bg-sidebar border-r border-border">
         <div className="p-5 pb-6">
           <Link to="/" className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-gold/10 flex items-center justify-center">
-              <svg className="w-4.5 h-4.5 text-gold" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
-              </svg>
-            </div>
+            <img src="/icon-512.png" alt="Stack Tracker Gold" className="w-8 h-8 rounded-lg" />
             <div>
               <h1 className="text-sm font-semibold tracking-tight">
                 <span className="text-gold">Stack Tracker</span>
@@ -86,7 +82,7 @@ export default function Layout() {
                     `relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-medium transition-all duration-200 ${
                       isActive
                         ? 'text-gold bg-gold/8'
-                        : 'text-text-muted hover:text-text-secondary hover:bg-white/[0.03]'
+                        : 'text-text-muted hover:text-text-secondary hover:bg-text/[0.03]'
                     }`
                   }
                 >
@@ -152,7 +148,7 @@ export default function Layout() {
       </main>
 
       {/* Mobile Bottom Tab Bar */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-[#0e0e0e]/95 backdrop-blur-xl border-t border-border z-50">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-sidebar/95 backdrop-blur-xl border-t border-border z-50">
         <ul className="flex justify-around px-2">
           {navItems.map((item) => (
             <li key={item.to} className="flex-1">

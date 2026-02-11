@@ -1,10 +1,25 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="dark">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <link rel="icon" type="image/png" href="/icon-512.png" />
+    <link rel="apple-touch-icon" href="/icon-512.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>stacktrackergold-app</title>
+    <meta name="theme-color" content="#0A0A0A" />
+    <title>Stack Tracker Gold</title>
+    <meta name="description" content="Track your precious metals portfolio — gold, silver, platinum, palladium." />
+    <meta property="og:title" content="Stack Tracker Gold" />
+    <meta property="og:description" content="Track your precious metals portfolio — gold, silver, platinum, palladium." />
+    <meta property="og:image" content="/icon-512.png" />
+    <meta property="og:type" content="website" />
+    <!-- Prevent flash of wrong theme -->
+    <script>
+      (function() {
+        var t = localStorage.getItem('stacktracker_theme') || 'system';
+        var dark = t === 'dark' || (t === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        if (!dark) document.documentElement.classList.remove('dark');
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
