@@ -37,37 +37,50 @@ export default function HoldingModal({
 }: HoldingModalProps) {
   const { prices } = useSpotPrices();
 
-  const getDisplayWeight = (): string => {
-    if (!initialData) return '1';
-    const storedOz = initialData.weight;
-    const unit = initialData.weightUnit;
-    return (storedOz / WEIGHT_CONVERSIONS[unit]).toString();
-  };
-
-  const [metal, setMetal] = useState<Metal>(initialData?.metal || 'gold');
-  const [type, setType] = useState(initialData?.type || '');
+  const [metal, setMetal] = useState<Metal>('gold');
+  const [type, setType] = useState('');
   const [customType, setCustomType] = useState('');
-  const [weight, setWeight] = useState(getDisplayWeight);
-  const [weightUnit, setWeightUnit] = useState<WeightUnit>(initialData?.weightUnit || 'oz');
-  const [quantity, setQuantity] = useState(initialData?.quantity?.toString() || '1');
-  const [purchasePrice, setPurchasePrice] = useState(initialData?.purchasePrice?.toString() || '');
-  const [purchaseDate, setPurchaseDate] = useState(
-    initialData?.purchaseDate || new Date().toISOString().split('T')[0]
-  );
-  const [notes, setNotes] = useState(initialData?.notes || '');
+  const [weight, setWeight] = useState('1');
+  const [weightUnit, setWeightUnit] = useState<WeightUnit>('oz');
+  const [quantity, setQuantity] = useState('1');
+  const [purchasePrice, setPurchasePrice] = useState('');
+  const [purchaseDate, setPurchaseDate] = useState('');
+  const [notes, setNotes] = useState('');
   const [error, setError] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
+  // Reset ALL form fields when initialData changes (edit vs add, or different holding)
   useEffect(() => {
-    if (initialData?.type) {
+    if (initialData) {
+      setMetal(initialData.metal);
+      setWeight((initialData.weight / WEIGHT_CONVERSIONS[initialData.weightUnit]).toString());
+      setWeightUnit(initialData.weightUnit);
+      setQuantity(initialData.quantity.toString());
+      setPurchasePrice(initialData.purchasePrice.toString());
+      setPurchaseDate(initialData.purchaseDate || '');
+      setNotes(initialData.notes || '');
+      // Type handling
       const presets = PRODUCT_TYPES[initialData.metal];
       if (presets.includes(initialData.type)) {
         setType(initialData.type);
+        setCustomType('');
       } else {
         setType('Other');
         setCustomType(initialData.type);
       }
+    } else {
+      setMetal('gold');
+      setType('');
+      setCustomType('');
+      setWeight('1');
+      setWeightUnit('oz');
+      setQuantity('1');
+      setPurchasePrice('');
+      setPurchaseDate(new Date().toISOString().split('T')[0]);
+      setNotes('');
     }
+    setError('');
+    setShowDeleteConfirm(false);
   }, [initialData]);
 
   useEffect(() => {

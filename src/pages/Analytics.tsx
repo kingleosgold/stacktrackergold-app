@@ -47,6 +47,18 @@ const tooltipStyle = {
   itemStyle: { color: 'var(--color-text)' },
 };
 
+// Downsample array to maxPoints evenly spaced entries (keeps first & last)
+function downsample<T>(data: T[], maxPoints: number): T[] {
+  if (data.length <= maxPoints) return data;
+  const step = (data.length - 1) / (maxPoints - 1);
+  const result: T[] = [];
+  for (let i = 0; i < maxPoints - 1; i++) {
+    result.push(data[Math.round(i * step)]);
+  }
+  result.push(data[data.length - 1]);
+  return result;
+}
+
 const SPOT_CHART_COLORS: Record<Metal, string> = {
   gold: '#D4A843',
   silver: '#C0C0C0',
@@ -68,6 +80,8 @@ function SpotPriceChart({ metal }: { metal: Metal }) {
         let d = res.data || [];
         const sliceDays = RANGE_SLICE_DAYS[range];
         if (sliceDays != null && d.length > sliceDays) d = d.slice(-sliceDays);
+        // Downsample dense datasets for accurate tooltip positioning
+        if (d.length > 250) d = downsample(d, 250);
         setData(d);
       })
       .catch(console.error)
@@ -157,6 +171,7 @@ function SpotPriceChart({ metal }: { metal: Metal }) {
                 strokeWidth={2}
                 fill={`url(#spot-${metal})`}
                 dot={false}
+                isAnimationActive={false}
               />
             </AreaChart>
           </ResponsiveContainer>
@@ -189,9 +204,28 @@ export default function Analytics() {
 
   const getSpotPrice = (metal: Metal): number => prices?.[metal] || 0;
 
+  // Earliest holding purchase date (memoized to avoid unnecessary refetches)
+  const earliestHoldingDate = useMemo(() => {
+    const dates = holdings.map((h) => h.purchaseDate).filter(Boolean).sort();
+    return dates.length > 0 ? dates[0] : null;
+  }, [holdings]);
+
   // Fetch price history from backend API when range changes
+  // For "All", pick optimal API range based on actual holdings date span
   useEffect(() => {
-    const apiRange = RANGE_API_PARAM[selectedRange] || '1M';
+    let apiRange = RANGE_API_PARAM[selectedRange] || '1M';
+
+    if (selectedRange === 'All' && earliestHoldingDate) {
+      const earliest = new Date(earliestHoldingDate);
+      const now = new Date();
+      const months = (now.getFullYear() - earliest.getFullYear()) * 12 + (now.getMonth() - earliest.getMonth());
+      if (months <= 1) apiRange = '1M';
+      else if (months <= 3) apiRange = '3M';
+      else if (months <= 6) apiRange = '6M';
+      else if (months <= 12) apiRange = '1Y';
+      else apiRange = 'ALL';
+    }
+
     fetchSpotPriceHistory(apiRange)
       .then((res) => {
         let data = res.data || [];
@@ -202,7 +236,7 @@ export default function Analytics() {
         setPriceHistory(data);
       })
       .catch(console.error);
-  }, [selectedRange]);
+  }, [selectedRange, earliestHoldingDate]);
 
   const stats = useMemo(() => {
     if (!prices) return null;
@@ -378,7 +412,7 @@ export default function Analytics() {
             label="Avg Gold Cost/oz"
             value={stats.avgGoldCostPerOz > 0 ? formatCurrency(stats.avgGoldCostPerOz) : '--'}
             subtext={stats.avgGoldCostPerOz > 0 ? `Spot: ${formatCurrency(getSpotPrice('gold'))}` : 'No gold holdings'}
-            color="text-[#D4A843]"
+            color="text-gold"
           />
           <StatCard
             label="Avg Silver Cost/oz"

@@ -50,9 +50,19 @@ const CATEGORY_LABELS: Record<string, string> = {
 
 // ─── Helper Components ────────────────────────────────────────
 
-function MiniSparkline({ data, color, id }: { data: { v: number }[]; color: string; id?: string }) {
+function MiniSparkline({ data, color, id, label }: {
+  data: { v: number; time?: string }[];
+  color: string;
+  id?: string;
+  label?: string;
+}) {
   if (data.length < 2) return null;
-  const gradId = `spark-${id || 'mini'}-${Math.random().toString(36).slice(2, 6)}`;
+  const gradId = `spark-${id || 'mini'}`;
+
+  const formatTime = (iso: string) => {
+    if (!iso) return '';
+    return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
 
   return (
     <div className="w-16 h-8">
@@ -64,6 +74,28 @@ function MiniSparkline({ data, color, id }: { data: { v: number }[]; color: stri
               <stop offset="100%" stopColor={color} stopOpacity={0} />
             </linearGradient>
           </defs>
+          <Tooltip
+            contentStyle={{
+              backgroundColor: 'var(--color-chart-bg)',
+              border: '1px solid var(--color-chart-border)',
+              borderRadius: '8px',
+              fontSize: '11px',
+              padding: '6px 10px',
+              whiteSpace: 'nowrap' as const,
+            }}
+            labelStyle={{ display: 'none' }}
+            formatter={(value: number | undefined, _name: string | undefined, entry: any) => {
+              if (value == null) return ['--', ''];
+              const time = entry?.payload?.time;
+              const timeStr = time ? formatTime(time) : '';
+              const priceStr = formatCurrency(value);
+              const text = label
+                ? (timeStr ? `${label}: ${priceStr} · ${timeStr}` : `${label}: ${priceStr}`)
+                : (timeStr ? `${priceStr} · ${timeStr}` : priceStr);
+              return [text, ''];
+            }}
+            cursor={{ stroke: 'var(--color-text-muted)', strokeWidth: 1, strokeDasharray: '3 3' }}
+          />
           <Area
             type="monotone"
             dataKey="v"
@@ -71,6 +103,7 @@ function MiniSparkline({ data, color, id }: { data: { v: number }[]; color: stri
             strokeWidth={1.5}
             fill={`url(#${gradId})`}
             dot={false}
+            activeDot={{ r: 3, fill: color, stroke: 'var(--color-surface)', strokeWidth: 2 }}
             isAnimationActive={false}
           />
         </AreaChart>
@@ -118,15 +151,14 @@ function PortfolioSparkline({ data, color, sparklineRaw }: {
               borderRadius: '8px',
               fontSize: '11px',
               padding: '6px 10px',
+              whiteSpace: 'nowrap' as const,
             }}
             labelStyle={{ display: 'none' }}
-            formatter={(value: number | undefined) => {
+            formatter={(value: number | undefined, _name: string | undefined, entry: any) => {
               if (value == null) return ['--', ''];
-              return [formatCurrency(value), ''];
-            }}
-            labelFormatter={(_, payload) => {
-              const entry = payload?.[0]?.payload;
-              return entry?.time ? formatTime(entry.time) : '';
+              const time = entry?.payload?.time;
+              const timeStr = time ? formatTime(time) : '';
+              return [timeStr ? `${formatCurrency(value)} · ${timeStr}` : formatCurrency(value), ''];
             }}
             cursor={{ stroke: 'var(--color-text-muted)', strokeWidth: 1, strokeDasharray: '3 3' }}
           />
@@ -381,15 +413,15 @@ export default function Today() {
       .finally(() => setVaultLoading(false));
   }, [isGoldOrHigher]);
 
-  // Build per-metal sparkline data
+  // Build per-metal sparkline data with timestamps
   const sparklines = useMemo(() => {
-    const result: Record<Metal, { v: number }[]> = {
+    const result: Record<Metal, { v: number; time: string }[]> = {
       gold: [], silver: [], platinum: [], palladium: [],
     };
     for (const entry of sparklineRaw) {
       for (const metal of METALS) {
         const key = METAL_PRICE_KEY[metal];
-        result[metal].push({ v: entry[key] as number });
+        result[metal].push({ v: entry[key] as number, time: entry.created_at });
       }
     }
     return result;
@@ -570,7 +602,7 @@ export default function Today() {
                         {METAL_LABELS[metal]}
                       </span>
                       {metalSparkline.length >= 2 && (
-                        <MiniSparkline data={metalSparkline} color={color} />
+                        <MiniSparkline data={metalSparkline} color={color} id={metal} label={METAL_LABELS[metal]} />
                       )}
                     </div>
                     <p className="text-lg font-bold">{formatCurrency(price)}</p>
