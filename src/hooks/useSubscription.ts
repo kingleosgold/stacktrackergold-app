@@ -2,13 +2,12 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 
-export type SubscriptionTier = 'free' | 'gold' | 'platinum' | 'lifetime';
+export type SubscriptionTier = 'free' | 'gold' | 'lifetime';
 
 interface UseSubscriptionReturn {
   tier: SubscriptionTier;
   loading: boolean;
-  isGoldOrHigher: boolean;
-  isPlatinum: boolean;
+  isGold: boolean;
   refetch: () => Promise<void>;
 }
 
@@ -34,7 +33,11 @@ export function useSubscription(): UseSubscriptionReturn {
       if (error || !data) {
         setTier('free');
       } else {
-        setTier((data.subscription_tier as SubscriptionTier) || 'free');
+        const raw = data.subscription_tier as string;
+        // Normalize: anything paid maps to gold or lifetime
+        if (raw === 'lifetime') setTier('lifetime');
+        else if (raw === 'gold') setTier('gold');
+        else setTier('free');
       }
     } catch {
       setTier('free');
@@ -47,8 +50,7 @@ export function useSubscription(): UseSubscriptionReturn {
     fetchTier();
   }, [fetchTier]);
 
-  const isGoldOrHigher = tier === 'gold' || tier === 'lifetime' || tier === 'platinum';
-  const isPlatinum = tier === 'platinum';
+  const isGold = tier === 'gold' || tier === 'lifetime';
 
-  return { tier, loading, isGoldOrHigher, isPlatinum, refetch: fetchTier };
+  return { tier, loading, isGold, refetch: fetchTier };
 }

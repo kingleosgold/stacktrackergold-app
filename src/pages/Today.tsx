@@ -366,7 +366,7 @@ function VaultWatchPanel({
 export default function Today() {
   const { holdings, getTotalsByMetal, loading: holdingsLoading } = useHoldings();
   const { prices, loading: pricesLoading, lastUpdated } = useSpotPrices(60000);
-  const { isGoldOrHigher } = useSubscription();
+  const { isGold } = useSubscription();
   const [sparklineRaw, setSparklineRaw] = useState<PriceLogEntry[]>([]);
 
   // Intelligence state
@@ -386,7 +386,7 @@ export default function Today() {
 
   // Fetch intelligence (gold+ only, auto-refresh every 5 min)
   const loadIntelligence = useCallback(async () => {
-    if (!isGoldOrHigher) return;
+    if (!isGold) return;
     setIntelligenceLoading(true);
     try {
       const res = await fetchIntelligence();
@@ -396,24 +396,24 @@ export default function Today() {
     } finally {
       setIntelligenceLoading(false);
     }
-  }, [isGoldOrHigher]);
+  }, [isGold]);
 
   useEffect(() => {
     loadIntelligence();
-    if (!isGoldOrHigher) return;
+    if (!isGold) return;
     const interval = setInterval(loadIntelligence, 5 * 60 * 1000);
     return () => clearInterval(interval);
-  }, [loadIntelligence, isGoldOrHigher]);
+  }, [loadIntelligence, isGold]);
 
   // Fetch vault data (gold+ only)
   useEffect(() => {
-    if (!isGoldOrHigher) return;
+    if (!isGold) return;
     setVaultLoading(true);
     fetchVaultData('comex', 30)
       .then((res) => setVaultData(res.data))
       .catch((e) => console.error('Failed to fetch vault data:', e))
       .finally(() => setVaultLoading(false));
-  }, [isGoldOrHigher]);
+  }, [isGold]);
 
   // Build per-metal sparkline data with timestamps
   const sparklines = useMemo(() => {
@@ -757,10 +757,10 @@ export default function Today() {
               </GatedContent>
             </motion.div>
 
-            {/* AI Daily Brief (PLATINUM) — Placeholder */}
+            {/* AI Daily Brief (GOLD) — Placeholder */}
             <motion.div variants={item}>
               <h2 className="text-sm font-medium text-text-muted uppercase tracking-wider mb-3">AI Daily Brief</h2>
-              <GatedContent requiredTier="platinum" featureName="AI Daily Brief">
+              <GatedContent requiredTier="gold" featureName="AI Daily Brief">
                 <div className="rounded-xl bg-surface border border-border p-6 text-center">
                   <div className="w-10 h-10 mx-auto rounded-full bg-gold/10 flex items-center justify-center mb-3">
                     <svg className="w-5 h-5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
@@ -773,10 +773,10 @@ export default function Today() {
               </GatedContent>
             </motion.div>
 
-            {/* AI Stack Advisor (PLATINUM) — Placeholder */}
+            {/* AI Stack Advisor (GOLD) — Placeholder */}
             <motion.div variants={item}>
               <h2 className="text-sm font-medium text-text-muted uppercase tracking-wider mb-3">AI Stack Advisor</h2>
-              <GatedContent requiredTier="platinum" featureName="AI Stack Advisor">
+              <GatedContent requiredTier="gold" featureName="AI Stack Advisor">
                 <div className="rounded-xl bg-surface border border-border p-6 text-center">
                   <div className="w-10 h-10 mx-auto rounded-full bg-gold/10 flex items-center justify-center mb-3">
                     <svg className="w-5 h-5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
@@ -789,10 +789,10 @@ export default function Today() {
               </GatedContent>
             </motion.div>
 
-            {/* AI Deal Finder (PLATINUM) — Placeholder */}
+            {/* AI Deal Finder (GOLD) — Placeholder */}
             <motion.div variants={item}>
               <h2 className="text-sm font-medium text-text-muted uppercase tracking-wider mb-3">AI Deal Finder</h2>
-              <GatedContent requiredTier="platinum" featureName="AI Deal Finder">
+              <GatedContent requiredTier="gold" featureName="AI Deal Finder">
                 <div className="rounded-xl bg-surface border border-border p-6 text-center">
                   <div className="w-10 h-10 mx-auto rounded-full bg-gold/10 flex items-center justify-center mb-3">
                     <svg className="w-5 h-5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>

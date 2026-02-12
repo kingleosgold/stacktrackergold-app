@@ -10,74 +10,61 @@ interface PricingModalProps {
   currentTier: SubscriptionTier;
 }
 
-const GOLD_PRICE_ID = import.meta.env.VITE_STRIPE_GOLD_PRICE_ID || '';
-const PLATINUM_PRICE_ID = import.meta.env.VITE_STRIPE_PLATINUM_PRICE_ID || '';
+const MONTHLY_PRICE_ID = import.meta.env.VITE_STRIPE_GOLD_MONTHLY_PRICE_ID || '';
+const YEARLY_PRICE_ID = import.meta.env.VITE_STRIPE_GOLD_YEARLY_PRICE_ID || '';
+const LIFETIME_PRICE_ID = import.meta.env.VITE_STRIPE_GOLD_LIFETIME_PRICE_ID || '';
 
-const plans = [
-  {
-    id: 'gold' as const,
-    name: 'Gold',
-    priceId: GOLD_PRICE_ID,
-    price: '$4.99',
-    period: '/mo',
-    features: [
-      'Unlimited holdings',
-      'Daily intelligence briefs',
-      'COMEX vault data',
-      'Spot price history',
-      'Portfolio analytics',
-      'CSV import/export',
-    ],
-    accent: 'text-gold',
-    accentBg: 'bg-gold/10',
-    buttonBg: 'bg-gold hover:bg-gold-hover',
-  },
-  {
-    id: 'platinum' as const,
-    name: 'Platinum',
-    priceId: PLATINUM_PRICE_ID,
-    price: '$9.99',
-    period: '/mo',
-    features: [
-      'Everything in Gold',
-      'AI coin identification',
-      'Price alerts',
-      'Portfolio snapshots',
-      'Priority support',
-      'Early access to new features',
-    ],
-    accent: 'text-blue-400',
-    accentBg: 'bg-blue-400/10',
-    buttonBg: 'bg-blue-500 hover:bg-blue-600',
-  },
+type PricingOption = 'monthly' | 'yearly' | 'lifetime';
+
+const pricingOptions: { id: PricingOption; label: string; price: string; detail: string; badge?: string; priceId: string }[] = [
+  { id: 'monthly', label: 'Monthly', price: '$9.99', detail: '/month', priceId: MONTHLY_PRICE_ID },
+  { id: 'yearly', label: 'Yearly', price: '$79.99', detail: '/year', badge: 'Save 33%', priceId: YEARLY_PRICE_ID },
+  { id: 'lifetime', label: 'Lifetime', price: '$199.99', detail: 'one-time', badge: 'Best Value', priceId: LIFETIME_PRICE_ID },
+];
+
+const features = [
+  'AI Intelligence Feed — daily market analysis',
+  'COMEX Vault Watch — warehouse inventory data',
+  'AI Stack Advisor — personal portfolio AI chat',
+  'AI Daily Brief — morning market briefing',
+  'AI Deal Finder — best prices on bullion',
+  'Spot Price History — full historical charts',
+  'Advanced Analytics — portfolio deep dive',
 ];
 
 export function PricingModal({ isOpen, onClose, currentTier }: PricingModalProps) {
   const { user } = useAuth();
-  const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
+  const [selected, setSelected] = useState<PricingOption>('monthly');
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleSubscribe = async (priceId: string, planId: string) => {
+  const isAlreadyGold = currentTier === 'gold' || currentTier === 'lifetime';
+
+  const handleSubscribe = async () => {
     if (!user) {
       setError('Please sign in first');
       return;
     }
-    if (!priceId) {
+
+    const option = pricingOptions.find((o) => o.id === selected);
+    if (!option?.priceId) {
       setError('This plan is not available yet');
       return;
     }
 
-    setLoadingPlan(planId);
+    setLoading(true);
     setError(null);
 
     try {
-      const { url } = await createCheckoutSession(user.id, priceId);
+      const { url } = await createCheckoutSession(user.id, option.priceId);
       window.location.href = url;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to start checkout');
-      setLoadingPlan(null);
+      setLoading(false);
     }
   };
+
+  const selectedOption = pricingOptions.find((o) => o.id === selected)!;
 
   return (
     <AnimatePresence>
@@ -99,7 +86,7 @@ export function PricingModal({ isOpen, onClose, currentTier }: PricingModalProps
             exit={{ opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.2 }}
             onClick={(e) => e.stopPropagation()}
-            className="relative max-w-2xl w-full bg-surface border border-border rounded-xl p-6 max-h-[90vh] overflow-y-auto"
+            className="relative max-w-md w-full bg-surface border border-border rounded-xl p-6 max-h-[90vh] overflow-y-auto"
           >
             {/* Close button */}
             <button
@@ -112,9 +99,19 @@ export function PricingModal({ isOpen, onClose, currentTier }: PricingModalProps
             </button>
 
             {/* Header */}
-            <div className="text-center mb-6">
-              <h2 className="text-xl font-bold mb-1">Upgrade Your Stack</h2>
-              <p className="text-sm text-text-muted">Unlock premium features for serious stackers</p>
+            <div className="text-center mb-5">
+              <div className="w-12 h-12 mx-auto rounded-full bg-gold/15 flex items-center justify-center mb-3">
+                <svg className="w-6 h-6 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z" />
+                </svg>
+              </div>
+              <h2 className="text-xl font-bold text-gold mb-1">Upgrade to Gold</h2>
+              <p className="text-sm text-text-muted">Unlock every feature in Stack Tracker</p>
+            </div>
+
+            {/* Free plan note */}
+            <div className="text-xs text-text-muted text-center mb-5 px-2">
+              Free plan includes portfolio tracking, live spot prices, and basic analytics.
             </div>
 
             {/* Error */}
@@ -124,88 +121,93 @@ export function PricingModal({ isOpen, onClose, currentTier }: PricingModalProps
               </div>
             )}
 
-            {/* Plan Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {plans.map((plan) => {
-                const isCurrentPlan = currentTier === plan.id;
-                const isUpgrade = !isCurrentPlan && currentTier === 'free';
-                const isDowngrade = plan.id === 'gold' && (currentTier === 'platinum');
+            {isAlreadyGold ? (
+              <div className="text-center py-6">
+                <div className="w-12 h-12 mx-auto rounded-full bg-green-500/10 flex items-center justify-center mb-3">
+                  <svg className="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                  </svg>
+                </div>
+                <p className="text-sm font-medium">You're already a Gold member!</p>
+                <p className="text-xs text-text-muted mt-1">
+                  {currentTier === 'lifetime' ? 'Lifetime access — enjoy!' : 'Manage your subscription in Settings.'}
+                </p>
+              </div>
+            ) : (
+              <>
+                {/* Pricing Options */}
+                <div className="space-y-2 mb-5">
+                  {pricingOptions.map((option) => (
+                    <button
+                      key={option.id}
+                      onClick={() => setSelected(option.id)}
+                      className={`w-full flex items-center justify-between p-3.5 rounded-lg border transition-colors ${
+                        selected === option.id
+                          ? 'border-gold bg-gold/5'
+                          : 'border-border bg-background hover:border-border/80'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        {/* Radio dot */}
+                        <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                          selected === option.id ? 'border-gold' : 'border-text-muted/40'
+                        }`}>
+                          {selected === option.id && (
+                            <div className="w-2 h-2 rounded-full bg-gold" />
+                          )}
+                        </div>
+                        <div className="text-left">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium">{option.label}</span>
+                            {option.badge && (
+                              <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded bg-gold/15 text-gold">
+                                {option.badge}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-sm font-bold">{option.price}</span>
+                        <span className="text-xs text-text-muted ml-1">{option.detail}</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
 
-                return (
-                  <div
-                    key={plan.id}
-                    className={`rounded-xl border p-5 flex flex-col ${
-                      isCurrentPlan ? 'border-gold/40 bg-gold/5' : 'border-border bg-background'
-                    }`}
-                  >
-                    {/* Plan name + badge */}
-                    <div className="flex items-center gap-2 mb-3">
-                      <span className={`text-lg font-bold ${plan.accent}`}>{plan.name}</span>
-                      {isCurrentPlan && (
-                        <span className="px-2 py-0.5 text-[10px] font-semibold rounded-full bg-gold/15 text-gold">
-                          CURRENT
-                        </span>
-                      )}
-                    </div>
+                {/* Features */}
+                <div className="mb-5">
+                  <p className="text-xs font-medium text-text-muted uppercase tracking-wider mb-2.5">Everything in Gold</p>
+                  <ul className="space-y-2">
+                    {features.map((feature) => (
+                      <li key={feature} className="flex items-start gap-2 text-sm">
+                        <svg className="w-4 h-4 mt-0.5 shrink-0 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                        </svg>
+                        <span className="text-text-secondary">{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
 
-                    {/* Price */}
-                    <div className="mb-4">
-                      <span className="text-2xl font-bold">{plan.price}</span>
-                      <span className="text-sm text-text-muted">{plan.period}</span>
-                    </div>
-
-                    {/* Features */}
-                    <ul className="space-y-2 mb-5 flex-1">
-                      {plan.features.map((feature) => (
-                        <li key={feature} className="flex items-start gap-2 text-sm">
-                          <svg className={`w-4 h-4 mt-0.5 shrink-0 ${plan.accent}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                          </svg>
-                          <span className="text-text-secondary">{feature}</span>
-                        </li>
-                      ))}
-                    </ul>
-
-                    {/* CTA Button */}
-                    {isCurrentPlan ? (
-                      <button
-                        disabled
-                        className="w-full py-2.5 px-4 text-sm font-medium rounded-lg bg-surface-light text-text-muted cursor-not-allowed"
-                      >
-                        Current Plan
-                      </button>
-                    ) : isDowngrade ? (
-                      <button
-                        disabled
-                        className="w-full py-2.5 px-4 text-sm font-medium rounded-lg bg-surface-light text-text-muted cursor-not-allowed"
-                      >
-                        Manage in billing portal
-                      </button>
-                    ) : isUpgrade ? (
-                      <button
-                        onClick={() => handleSubscribe(plan.priceId, plan.id)}
-                        disabled={loadingPlan !== null}
-                        className={`w-full py-2.5 px-4 text-sm font-medium rounded-lg text-background transition-colors disabled:opacity-50 ${plan.buttonBg}`}
-                      >
-                        {loadingPlan === plan.id ? 'Redirecting...' : `Subscribe to ${plan.name}`}
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => handleSubscribe(plan.priceId, plan.id)}
-                        disabled={loadingPlan !== null}
-                        className={`w-full py-2.5 px-4 text-sm font-medium rounded-lg text-background transition-colors disabled:opacity-50 ${plan.buttonBg}`}
-                      >
-                        {loadingPlan === plan.id ? 'Redirecting...' : `Upgrade to ${plan.name}`}
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+                {/* CTA Button */}
+                <button
+                  onClick={handleSubscribe}
+                  disabled={loading}
+                  className="w-full py-3 px-4 bg-gold text-background font-medium rounded-lg hover:bg-gold-hover transition-colors disabled:opacity-50"
+                >
+                  {loading
+                    ? 'Redirecting to checkout...'
+                    : selected === 'lifetime'
+                    ? `Get Lifetime Access — ${selectedOption.price}`
+                    : `Subscribe to Gold — ${selectedOption.price}${selectedOption.detail}`}
+                </button>
+              </>
+            )}
 
             {/* Footer */}
-            <p className="text-center text-xs text-text-muted mt-5">
-              Cancel anytime. Subscriptions managed by Stripe.
+            <p className="text-center text-xs text-text-muted mt-4">
+              {selected === 'lifetime' ? 'One-time payment. No recurring charges.' : 'Cancel anytime.'} Powered by Stripe.
             </p>
           </motion.div>
         </motion.div>

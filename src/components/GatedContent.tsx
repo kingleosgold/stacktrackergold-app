@@ -4,19 +4,15 @@ import { PricingModal } from './PricingModal';
 
 interface GatedContentProps {
   children: React.ReactNode;
-  requiredTier: 'gold' | 'platinum';
+  requiredTier?: 'gold';
   featureName?: string;
 }
 
-export function GatedContent({ children, requiredTier, featureName }: GatedContentProps) {
-  const { isGoldOrHigher, isPlatinum, tier } = useSubscription();
+export function GatedContent({ children, featureName }: GatedContentProps) {
+  const { isGold, tier } = useSubscription();
   const [showPricing, setShowPricing] = useState(false);
 
-  const hasAccess = requiredTier === 'gold' ? isGoldOrHigher : isPlatinum;
-
-  if (hasAccess) return <>{children}</>;
-
-  const tierLabel = requiredTier === 'gold' ? 'Gold' : 'Platinum';
+  if (isGold) return <>{children}</>;
 
   return (
     <div className="relative">
@@ -30,13 +26,13 @@ export function GatedContent({ children, requiredTier, featureName }: GatedConte
           </svg>
         </div>
         <p className="text-sm font-semibold text-text mb-1">
-          {featureName || 'This feature'} requires {tierLabel}
+          {featureName || 'This feature'} requires Gold
         </p>
         <button
           onClick={() => setShowPricing(true)}
           className="mt-3 px-5 py-2 bg-gold text-background text-sm font-medium rounded-lg hover:bg-gold-hover transition-colors"
         >
-          Upgrade to {tierLabel}
+          Upgrade to Gold
         </button>
       </div>
       <PricingModal
