@@ -1,5 +1,6 @@
-import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
 import { useSubscription } from '../hooks/useSubscription';
+import { PricingModal } from './PricingModal';
 
 interface GatedContentProps {
   children: React.ReactNode;
@@ -8,8 +9,8 @@ interface GatedContentProps {
 }
 
 export function GatedContent({ children, requiredTier, featureName }: GatedContentProps) {
-  const { isGoldOrHigher, isPlatinum } = useSubscription();
-  const navigate = useNavigate();
+  const { isGoldOrHigher, isPlatinum, tier } = useSubscription();
+  const [showPricing, setShowPricing] = useState(false);
 
   const hasAccess = requiredTier === 'gold' ? isGoldOrHigher : isPlatinum;
 
@@ -32,12 +33,17 @@ export function GatedContent({ children, requiredTier, featureName }: GatedConte
           {featureName || 'This feature'} requires {tierLabel}
         </p>
         <button
-          onClick={() => navigate('/settings')}
+          onClick={() => setShowPricing(true)}
           className="mt-3 px-5 py-2 bg-gold text-background text-sm font-medium rounded-lg hover:bg-gold-hover transition-colors"
         >
           Upgrade to {tierLabel}
         </button>
       </div>
+      <PricingModal
+        isOpen={showPricing}
+        onClose={() => setShowPricing(false)}
+        currentTier={tier}
+      />
     </div>
   );
 }

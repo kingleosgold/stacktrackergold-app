@@ -245,3 +245,42 @@ export async function syncSubscription(userId: string): Promise<SyncSubscription
   }
   return response.json();
 }
+
+// ─── Stripe Billing ──────────────────────────────────────────────
+
+export async function createCheckoutSession(
+  userId: string,
+  priceId: string,
+): Promise<{ url: string }> {
+  const response = await fetch(`${API_BASE_URL}/api/stripe/create-checkout-session`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      user_id: userId,
+      price_id: priceId,
+      success_url: `${window.location.origin}/settings?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${window.location.origin}/settings`,
+    }),
+  });
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.error || `Checkout failed: ${response.status}`);
+  }
+  return response.json();
+}
+
+export async function createCustomerPortal(userId: string): Promise<{ url: string }> {
+  const response = await fetch(`${API_BASE_URL}/api/stripe/customer-portal`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      user_id: userId,
+      return_url: `${window.location.origin}/settings`,
+    }),
+  });
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.error || `Portal failed: ${response.status}`);
+  }
+  return response.json();
+}

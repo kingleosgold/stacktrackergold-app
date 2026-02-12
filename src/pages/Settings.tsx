@@ -1,5 +1,5 @@
-import { useState, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useRef, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useHoldings } from '../hooks/useHoldings';
 import { useTheme } from '../hooks/useTheme';
@@ -7,7 +7,8 @@ import type { Theme } from '../hooks/useTheme';
 import { useAuth } from '../contexts/AuthContext';
 import { useSubscription } from '../hooks/useSubscription';
 import { clearAllHoldings } from '../services/holdings';
-import { syncSubscription } from '../services/api';
+import { syncSubscription, createCustomerPortal } from '../services/api';
+import { PricingModal } from '../components/PricingModal';
 
 const APP_VERSION = '2.0.0';
 
@@ -169,6 +170,7 @@ function ConfirmModal({ isOpen, onClose, onConfirm, title, message, confirmText 
 
 export default function Settings() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { holdings, exportCSV, importCSV, refresh } = useHoldings();
   const { theme, setTheme } = useTheme();
   const {
@@ -179,6 +181,20 @@ export default function Settings() {
   const [syncingSubscription, setSyncingSubscription] = useState(false);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [showPricing, setShowPricing] = useState(false);
+  const [managingPortal, setManagingPortal] = useState(false);
+
+  // Handle Stripe checkout success redirect
+  useEffect(() => {
+    const sessionId = searchParams.get('session_id');
+    if (sessionId) {
+      showStatus('Subscription activated! Welcome aboard.');
+      refetchTier();
+      // Clean up URL
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [showEmailForm, setShowEmailForm] = useState(false);
   const [newEmail, setNewEmail] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -300,6 +316,18 @@ export default function Settings() {
       showStatus(`Failed: ${err instanceof Error ? err.message : "Couldn't sync subscription. Make sure you're signed in with the same account on mobile."}`);
     } finally {
       setSyncingSubscription(false);
+    }
+  };
+
+  const handleManageSubscription = async () => {
+    if (!user) return;
+    setManagingPortal(true);
+    try {
+      const { url } = await createCustomerPortal(user.id);
+      window.location.href = url;
+    } catch (err) {
+      showStatus(`Failed: ${err instanceof Error ? err.message : 'Could not open billing portal'}`);
+      setManagingPortal(false);
     }
   };
 
@@ -465,6 +493,36 @@ export default function Settings() {
               </span>
             </div>
           </div>
+          {user && tier === 'free' && (
+            <div className="py-3.5 px-4">
+              <button
+                onClick={() => setShowPricing(true)}
+                className="flex items-center gap-2 px-4 py-2.5 w-full bg-gold text-background font-medium rounded-lg hover:bg-gold-hover transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z" />
+                </svg>
+                <span className="text-sm">Upgrade Plan</span>
+              </button>
+            </div>
+          )}
+          {user && tier !== 'free' && tier !== 'lifetime' && (
+            <div className="py-3.5 px-4">
+              <button
+                onClick={handleManageSubscription}
+                disabled={managingPortal}
+                className="flex items-center gap-2 px-4 py-2.5 w-full bg-background border border-border rounded-lg hover:bg-surface-hover transition-colors disabled:opacity-50"
+              >
+                <svg className="w-4 h-4 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z" />
+                </svg>
+                <div className="text-left">
+                  <p className="text-sm font-medium">{managingPortal ? 'Opening...' : 'Manage Subscription'}</p>
+                  <p className="text-[11px] text-text-muted">Change plan, update payment, or cancel</p>
+                </div>
+              </button>
+            </div>
+          )}
           {user && (
             <div className="py-3.5 px-4">
               <button
@@ -560,6 +618,12 @@ export default function Settings() {
         message="This will permanently delete all holdings. This cannot be undone."
         confirmText="Clear All"
         danger
+      />
+
+      <PricingModal
+        isOpen={showPricing}
+        onClose={() => setShowPricing(false)}
+        currentTier={tier}
       />
     </div>
   );
