@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip,
@@ -73,6 +73,12 @@ function SpotPriceChart({ metal, spotPrice }: { metal: Metal; spotPrice: number 
   const [loading, setLoading] = useState(true);
   const [isFlat, setIsFlat] = useState(false);
 
+  // Custom hover state for "All" range (bypasses broken Recharts tooltip)
+  const chartContainerRef = useRef<HTMLDivElement>(null);
+  const [hoverIndex, setHoverIndex] = useState<number | null>(null);
+  const [hoverX, setHoverX] = useState(0);
+  const isAllRange = range === 'All';
+
   useEffect(() => {
     setLoading(true);
     setIsFlat(false);
@@ -94,9 +100,8 @@ function SpotPriceChart({ metal, spotPrice }: { metal: Metal; spotPrice: number 
           }
         }
 
-        // Downsample dense datasets — keep to 60 for All to avoid tooltip misalignment
-        const maxPoints = range === 'All' ? 60 : 150;
-        if (d.length > maxPoints) d = downsample(d, maxPoints);
+        // Downsample dense datasets
+        if (d.length > 150) d = downsample(d, 150);
         setData(d);
       })
       .catch(console.error)
@@ -111,9 +116,33 @@ function SpotPriceChart({ metal, spotPrice }: { metal: Metal; spotPrice: number 
     }));
   }, [data, metal]);
 
+  // Custom mouse handler for "All" range
+  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isAllRange || chartData.length === 0) return;
+    const rect = chartContainerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+
+    // Account for the YAxis width (~55px) and right padding (~5px)
+    const yAxisWidth = 55;
+    const rightPad = 5;
+    const chartLeft = rect.left + yAxisWidth;
+    const chartWidth = rect.width - yAxisWidth - rightPad;
+    const mouseX = e.clientX - chartLeft;
+    const pct = Math.max(0, Math.min(1, mouseX / chartWidth));
+    const idx = Math.round(pct * (chartData.length - 1));
+    setHoverIndex(idx);
+    setHoverX(yAxisWidth + pct * chartWidth);
+  }, [isAllRange, chartData.length]);
+
+  const handleMouseLeave = useCallback(() => {
+    setHoverIndex(null);
+  }, []);
+
   const latestPrice = chartData.length > 0 ? chartData[chartData.length - 1].price : spotPrice;
   const firstPrice = chartData.length > 0 ? chartData[0].price : 0;
   const changePercent = firstPrice > 0 ? ((latestPrice - firstPrice) / firstPrice) * 100 : 0;
+
+  const hoveredPoint = hoverIndex != null ? chartData[hoverIndex] : null;
 
   return (
     <div className="rounded-xl bg-surface border border-border p-5">
@@ -151,52 +180,95 @@ function SpotPriceChart({ metal, spotPrice }: { metal: Metal; spotPrice: number 
             <p className="text-xs text-text-muted text-center px-4">No historical data available for this range</p>
           </div>
         ) : (
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={chartData}>
-              <defs>
-                <linearGradient id={`spot-${metal}`} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={color} stopOpacity={0.25} />
-                  <stop offset="100%" stopColor={color} stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-chart-grid)" />
-              <XAxis
-                dataKey="date"
-                tick={{ fill: 'var(--color-chart-label)', fontSize: 10 }}
-                axisLine={{ stroke: 'var(--color-chart-grid)' }}
-                tickLine={false}
-                interval="preserveStartEnd"
-              />
-              <YAxis
-                tick={{ fill: 'var(--color-chart-label)', fontSize: 10 }}
-                axisLine={false}
-                tickLine={false}
-                tickFormatter={(v) => metal === 'gold' || metal === 'platinum' || metal === 'palladium' ? `$${v.toLocaleString()}` : `$${v}`}
-                width={55}
-                domain={['auto', 'auto']}
-              />
-              <Tooltip
-                isAnimationActive={false}
-                offset={0}
-                formatter={(value: number | undefined) => [value != null ? formatCurrency(value) : '--', METAL_LABELS[metal]]}
-                labelFormatter={(_, payload) => {
-                  const entry = payload?.[0]?.payload;
-                  return entry?.fullDate || '';
-                }}
-                {...tooltipStyle}
-                cursor={{ stroke: 'var(--color-text-muted)', strokeWidth: 1 }}
-              />
-              <Area
-                type="monotone"
-                dataKey="price"
-                stroke={color}
-                strokeWidth={2}
-                fill={`url(#spot-${metal})`}
-                dot={false}
-                isAnimationActive={false}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
+          <div
+            ref={chartContainerRef}
+            className="relative w-full h-full"
+            onMouseMove={isAllRange ? handleMouseMove : undefined}
+            onMouseLeave={isAllRange ? handleMouseLeave : undefined}
+          >
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={chartData}>
+                <defs>
+                  <linearGradient id={`spot-${metal}`} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={color} stopOpacity={0.25} />
+                    <stop offset="100%" stopColor={color} stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-chart-grid)" />
+                <XAxis
+                  dataKey="date"
+                  tick={{ fill: 'var(--color-chart-label)', fontSize: 10 }}
+                  axisLine={{ stroke: 'var(--color-chart-grid)' }}
+                  tickLine={false}
+                  interval="preserveStartEnd"
+                />
+                <YAxis
+                  tick={{ fill: 'var(--color-chart-label)', fontSize: 10 }}
+                  axisLine={false}
+                  tickLine={false}
+                  tickFormatter={(v) => metal === 'gold' || metal === 'platinum' || metal === 'palladium' ? `$${v.toLocaleString()}` : `$${v}`}
+                  width={55}
+                  domain={['auto', 'auto']}
+                />
+                {/* Use Recharts Tooltip only for non-All ranges */}
+                {!isAllRange && (
+                  <Tooltip
+                    isAnimationActive={false}
+                    formatter={(value: number | undefined) => [value != null ? formatCurrency(value) : '--', METAL_LABELS[metal]]}
+                    labelFormatter={(_, payload) => {
+                      const entry = payload?.[0]?.payload;
+                      return entry?.fullDate || '';
+                    }}
+                    {...tooltipStyle}
+                    cursor={{ stroke: 'var(--color-text-muted)', strokeWidth: 1 }}
+                  />
+                )}
+                <Area
+                  type="monotone"
+                  dataKey="price"
+                  stroke={color}
+                  strokeWidth={2}
+                  fill={`url(#spot-${metal})`}
+                  dot={false}
+                  isAnimationActive={false}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+
+            {/* Custom hover tooltip for "All" range */}
+            {isAllRange && hoveredPoint && (
+              <>
+                {/* Vertical line */}
+                <div
+                  className="absolute top-0 bottom-0 pointer-events-none"
+                  style={{ left: `${hoverX}px`, width: '1px', backgroundColor: 'var(--color-text-muted)', opacity: 0.5 }}
+                />
+                {/* Tooltip box */}
+                <div
+                  className="absolute pointer-events-none z-10"
+                  style={{
+                    left: `${hoverX}px`,
+                    top: '0px',
+                    transform: hoverX > (chartContainerRef.current?.offsetWidth || 300) / 2
+                      ? 'translateX(-110%)' : 'translateX(10%)',
+                  }}
+                >
+                  <div
+                    className="rounded-lg px-2.5 py-1.5 text-xs whitespace-nowrap"
+                    style={{
+                      backgroundColor: 'var(--color-chart-bg)',
+                      border: '1px solid var(--color-chart-border)',
+                    }}
+                  >
+                    <div style={{ color: 'var(--color-text-secondary)' }}>{hoveredPoint.fullDate}</div>
+                    <div className="font-medium" style={{ color: 'var(--color-text)' }}>
+                      {METAL_LABELS[metal]}: {formatCurrency(hoveredPoint.price)}
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
         )}
       </div>
     </div>
@@ -331,12 +403,19 @@ export default function Analytics() {
     };
   }, [holdings, prices, getTotalsByMetal]);
 
-  // Find the earliest purchase date across all holdings
+  // Find the earliest VALID purchase date across all holdings.
+  // A valid date is one that exists AND is more than 7 days ago.
   const earliestPurchaseDate = useMemo(() => {
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const cutoff = sevenDaysAgo.toISOString().split('T')[0];
+
     let earliest: string | null = null;
     for (const h of holdings) {
-      if (h.purchaseDate && (!earliest || h.purchaseDate < earliest)) {
-        earliest = h.purchaseDate;
+      if (h.purchaseDate && h.purchaseDate <= cutoff) {
+        if (!earliest || h.purchaseDate < earliest) {
+          earliest = h.purchaseDate;
+        }
       }
     }
     return earliest;
@@ -347,11 +426,19 @@ export default function Analytics() {
     if (priceHistory.length === 0 || holdings.length === 0) return [];
     const totals = getTotalsByMetal();
 
-    // For "All", filter to only include points on/after the earliest purchase date.
-    // For other ranges, the API already limits the date window.
+    // For "All": if we have a valid earliest purchase date, filter to points on/after it.
+    // If no valid purchase dates (null/missing/all recent), show 1Y worth of data instead.
     let filtered = priceHistory;
-    if (selectedRange === 'All' && earliestPurchaseDate) {
-      filtered = priceHistory.filter((point) => point.date >= earliestPurchaseDate);
+    if (selectedRange === 'All') {
+      if (earliestPurchaseDate) {
+        filtered = priceHistory.filter((point) => point.date >= earliestPurchaseDate);
+      } else {
+        // No valid purchase dates — default to last ~1Y of data
+        const oneYearAgo = new Date();
+        oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+        const oneYearAgoStr = oneYearAgo.toISOString().split('T')[0];
+        filtered = priceHistory.filter((point) => point.date >= oneYearAgoStr);
+      }
     }
 
     console.log(`Earliest purchase date: ${earliestPurchaseDate}, Total API points: ${priceHistory.length}, Points after filter: ${filtered.length}`);
