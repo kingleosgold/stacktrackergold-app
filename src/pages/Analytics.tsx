@@ -66,16 +66,16 @@ const SPOT_CHART_COLORS: Record<Metal, string> = {
   palladium: '#6BBF8A',
 };
 
-function SpotPriceChart({ metal }: { metal: Metal }) {
+function SpotPriceChart({ metal, spotPrice }: { metal: Metal; spotPrice: number }) {
   const color = SPOT_CHART_COLORS[metal];
   const [range, setRange] = useState<typeof TIME_RANGES[number]>('1M');
   const [data, setData] = useState<SpotPriceHistoryPoint[]>([]);
   const [loading, setLoading] = useState(true);
-  const [flatDataNotice, setFlatDataNotice] = useState('');
+  const [isFlat, setIsFlat] = useState(false);
 
   useEffect(() => {
     setLoading(true);
-    setFlatDataNotice('');
+    setIsFlat(false);
     const apiRange = RANGE_API_PARAM[range] || '1M';
     fetchSpotPriceHistory(apiRange)
       .then((res) => {
@@ -87,27 +87,16 @@ function SpotPriceChart({ metal }: { metal: Metal }) {
         if (d.length > 2) {
           const prices = d.map((p) => p[metal] || 0).filter((v) => v > 0);
           const uniquePrices = new Set(prices.map((p) => p.toFixed(2)));
-          if (uniquePrices.size <= 1 && (range === 'All' || range === '1Y' || range === '6M' || range === '3M')) {
-            // Data is flat — fallback to 1M which has real price_log data
-            fetchSpotPriceHistory('1M')
-              .then((fallbackRes) => {
-                const fallbackData = fallbackRes.data || [];
-                if (fallbackData.length > 0) {
-                  const firstDate = new Date(fallbackData[0].date);
-                  setFlatDataNotice(`Historical data available from ${firstDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}`);
-                  setData(fallbackData);
-                } else {
-                  setData(d);
-                }
-              })
-              .catch(() => setData(d))
-              .finally(() => setLoading(false));
+          if (uniquePrices.size <= 1) {
+            setIsFlat(true);
+            setData([]);
             return;
           }
         }
 
-        // Downsample dense datasets for accurate tooltip positioning
-        if (d.length > 150) d = downsample(d, 150);
+        // Downsample dense datasets — keep to 60 for All to avoid tooltip misalignment
+        const maxPoints = range === 'All' ? 60 : 150;
+        if (d.length > maxPoints) d = downsample(d, maxPoints);
         setData(d);
       })
       .catch(console.error)
@@ -122,7 +111,7 @@ function SpotPriceChart({ metal }: { metal: Metal }) {
     }));
   }, [data, metal]);
 
-  const latestPrice = chartData.length > 0 ? chartData[chartData.length - 1].price : 0;
+  const latestPrice = chartData.length > 0 ? chartData[chartData.length - 1].price : spotPrice;
   const firstPrice = chartData.length > 0 ? chartData[0].price : 0;
   const changePercent = firstPrice > 0 ? ((latestPrice - firstPrice) / firstPrice) * 100 : 0;
 
@@ -146,20 +135,21 @@ function SpotPriceChart({ metal }: { metal: Metal }) {
           ))}
         </div>
       </div>
-      <div className="flex items-baseline gap-2 mb-1">
+      <div className="flex items-baseline gap-2 mb-3">
         <span className="text-lg font-bold">{formatCurrency(latestPrice)}</span>
-        {changePercent !== 0 && (
+        {changePercent !== 0 && !isFlat && (
           <span className={`text-xs font-medium ${changePercent >= 0 ? 'text-green' : 'text-red'}`}>
             {changePercent >= 0 ? '+' : ''}{changePercent.toFixed(2)}%
           </span>
         )}
       </div>
-      {flatDataNotice && (
-        <p className="text-[10px] text-text-muted mb-1">{flatDataNotice}</p>
-      )}
       <div className="h-40">
         {loading ? (
           <div className="w-full h-full rounded-lg bg-text/5 animate-pulse" />
+        ) : isFlat ? (
+          <div className="w-full h-full rounded-lg bg-text/[0.03] border border-dashed border-border flex items-center justify-center">
+            <p className="text-xs text-text-muted text-center px-4">No historical data available for this range</p>
+          </div>
         ) : (
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={chartData}>
@@ -186,6 +176,8 @@ function SpotPriceChart({ metal }: { metal: Metal }) {
                 domain={['auto', 'auto']}
               />
               <Tooltip
+                isAnimationActive={false}
+                offset={0}
                 formatter={(value: number | undefined) => [value != null ? formatCurrency(value) : '--', METAL_LABELS[metal]]}
                 labelFormatter={(_, payload) => {
                   const entry = payload?.[0]?.payload;
@@ -202,7 +194,6 @@ function SpotPriceChart({ metal }: { metal: Metal }) {
                 fill={`url(#spot-${metal})`}
                 dot={false}
                 isAnimationActive={false}
-                animationDuration={0}
               />
             </AreaChart>
           </ResponsiveContainer>
@@ -340,15 +331,30 @@ export default function Analytics() {
     };
   }, [holdings, prices, getTotalsByMetal]);
 
+  // Find the earliest purchase date across all holdings
+  const earliestPurchaseDate = useMemo(() => {
+    let earliest: string | null = null;
+    for (const h of holdings) {
+      if (h.purchaseDate && (!earliest || h.purchaseDate < earliest)) {
+        earliest = h.purchaseDate;
+      }
+    }
+    return earliest;
+  }, [holdings]);
+
   // Compute portfolio value history from backend spot-price-history × holdings oz
   const portfolioHistory = useMemo(() => {
     if (priceHistory.length === 0 || holdings.length === 0) return [];
     const totals = getTotalsByMetal();
 
-    // For ranges other than "All", the API already limits the date window.
-    // For "All", show every data point returned — don't filter by purchase date
-    // (the ALL endpoint returns ~60 sampled points which is a good chart density).
-    const filtered = priceHistory;
+    // For "All", filter to only include points on/after the earliest purchase date.
+    // For other ranges, the API already limits the date window.
+    let filtered = priceHistory;
+    if (selectedRange === 'All' && earliestPurchaseDate) {
+      filtered = priceHistory.filter((point) => point.date >= earliestPurchaseDate);
+    }
+
+    console.log(`Earliest purchase date: ${earliestPurchaseDate}, Total API points: ${priceHistory.length}, Points after filter: ${filtered.length}`);
 
     return filtered.map((point) => {
       const value =
@@ -362,7 +368,7 @@ export default function Analytics() {
         value: Math.round(value * 100) / 100,
       };
     });
-  }, [priceHistory, holdings, getTotalsByMetal, selectedRange]);
+  }, [priceHistory, holdings, getTotalsByMetal, selectedRange, earliestPurchaseDate]);
 
   const isLoading = loading || pricesLoading;
 
@@ -638,7 +644,7 @@ export default function Analytics() {
           <h2 className="text-sm font-medium text-text-muted uppercase tracking-wider mb-3">Spot Price History</h2>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {METALS.map((metal) => (
-              <SpotPriceChart key={metal} metal={metal} />
+              <SpotPriceChart key={metal} metal={metal} spotPrice={getSpotPrice(metal)} />
             ))}
           </div>
         </motion.div>
