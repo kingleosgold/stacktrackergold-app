@@ -161,7 +161,8 @@ export interface IntelligenceResponse {
 }
 
 export async function fetchIntelligence(date?: string): Promise<IntelligenceResponse> {
-  const d = date || new Date().toISOString().slice(0, 10);
+  // Use Eastern time for the date since the intelligence cron runs at 6:30 AM EST
+  const d = date || new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
   const response = await fetch(`${API_BASE_URL}/api/intelligence?date=${d}`);
   if (!response.ok) {
     throw new Error(`Failed to fetch intelligence: ${response.status}`);

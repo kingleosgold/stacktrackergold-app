@@ -266,103 +266,77 @@ export default function Portfolio() {
         </div>
       ) : (
         <div className="rounded-xl bg-surface border border-border overflow-hidden">
-          {/* Table Header */}
-          <div className="hidden md:grid md:grid-cols-[1fr_1.5fr_0.8fr_0.8fr_1fr_1fr_1fr_0.5fr] gap-2 px-5 py-3 border-b border-border text-xs text-text-muted font-medium">
-            <span>Metal</span>
-            <span>Type</span>
-            <span className="text-right">Weight</span>
-            <span className="text-right">Qty</span>
-            <span className="text-right">Cost</span>
-            <span className="text-right">Value</span>
-            <span className="text-right">Gain/Loss</span>
-            <span className="text-right">Premium</span>
-          </div>
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-border text-xs text-text-muted">
+                <th className="px-5 py-3 text-left font-medium w-[100px]">Metal</th>
+                <th className="px-2 py-3 text-left font-medium">Type</th>
+                <th className="px-2 py-3 text-right font-medium hidden md:table-cell">Weight</th>
+                <th className="px-2 py-3 text-right font-medium hidden md:table-cell">Qty</th>
+                <th className="px-2 py-3 text-right font-medium hidden md:table-cell">Cost</th>
+                <th className="px-2 py-3 text-right font-medium">Value</th>
+                <th className="px-2 py-3 text-right font-medium hidden md:table-cell">Gain/Loss</th>
+                <th className="px-5 py-3 text-right font-medium hidden md:table-cell">Premium</th>
+              </tr>
+            </thead>
+            <motion.tbody variants={container} initial="hidden" animate="show">
+              {filteredHoldings.map((holding) => {
+                const spotPrice = getSpotPrice(holding.metal);
+                const totalOz = holding.weight * holding.quantity;
+                const currentValue = totalOz * spotPrice;
+                const totalCost = holding.purchasePrice * holding.quantity;
+                const gainLoss = currentValue - totalCost;
+                const gainLossPercent = totalCost > 0 ? (gainLoss / totalCost) * 100 : 0;
+                const spotValue = totalOz * spotPrice;
+                const premiumOverSpot = spotValue > 0 ? ((totalCost - spotValue) / spotValue) * 100 : 0;
+                const isPositive = gainLoss >= 0;
 
-          {/* Holdings Rows */}
-          <motion.div variants={container} initial="hidden" animate="show">
-            {filteredHoldings.map((holding) => {
-              const spotPrice = getSpotPrice(holding.metal);
-              const totalOz = holding.weight * holding.quantity;
-              const currentValue = totalOz * spotPrice;
-              const totalCost = holding.purchasePrice * holding.quantity;
-              const gainLoss = currentValue - totalCost;
-              const gainLossPercent = totalCost > 0 ? (gainLoss / totalCost) * 100 : 0;
-              const spotValue = totalOz * spotPrice;
-              const premiumOverSpot = spotValue > 0 ? ((totalCost - spotValue) / spotValue) * 100 : 0;
-              const isPositive = gainLoss >= 0;
-
-              return (
-                <motion.div
-                  key={holding.id}
-                  variants={item}
-                  onClick={() => setEditingHolding(holding)}
-                  className="grid grid-cols-2 md:grid-cols-[1fr_1.5fr_0.8fr_0.8fr_1fr_1fr_1fr_0.5fr] gap-2 px-5 py-4 border-b border-border hover:bg-text/[0.02] cursor-pointer transition-colors"
-                >
-                  {/* Metal Badge */}
-                  <div className="flex items-center">
-                    <span
-                      className="inline-flex px-2.5 py-1 rounded-md text-[11px] font-semibold"
-                      style={{
-                        backgroundColor: `${METAL_COLORS[holding.metal]}15`,
-                        color: METAL_COLORS[holding.metal],
-                      }}
-                    >
-                      {METAL_LABELS[holding.metal]}
-                    </span>
-                  </div>
-
-                  {/* Type */}
-                  <div className="flex items-center">
-                    <div>
+                return (
+                  <motion.tr
+                    key={holding.id}
+                    variants={item}
+                    onClick={() => setEditingHolding(holding)}
+                    className="border-b border-border hover:bg-text/[0.02] cursor-pointer transition-colors"
+                  >
+                    <td className="px-5 py-4">
+                      <span
+                        className="inline-flex px-2.5 py-1 rounded-md text-[11px] font-semibold"
+                        style={{
+                          backgroundColor: `${METAL_COLORS[holding.metal]}15`,
+                          color: METAL_COLORS[holding.metal],
+                        }}
+                      >
+                        {METAL_LABELS[holding.metal]}
+                      </span>
+                    </td>
+                    <td className="px-2 py-4">
                       <p className="text-sm font-medium truncate">{holding.type}</p>
                       {holding.notes && (
                         <p className="text-[11px] text-text-muted truncate max-w-[200px]">{holding.notes}</p>
                       )}
-                    </div>
-                  </div>
-
-                  {/* Weight */}
-                  <div className="hidden md:flex items-center justify-end">
-                    <span className="text-sm">{formatWeight(holding.weight)}</span>
-                  </div>
-
-                  {/* Qty */}
-                  <div className="hidden md:flex items-center justify-end">
-                    <span className="text-sm">{holding.quantity}</span>
-                  </div>
-
-                  {/* Cost */}
-                  <div className="hidden md:flex items-center justify-end">
-                    <span className="text-sm">{formatCurrency(totalCost)}</span>
-                  </div>
-
-                  {/* Value */}
-                  <div className="flex items-center justify-end md:justify-end">
-                    <span className="text-sm font-medium">{formatCurrency(currentValue)}</span>
-                  </div>
-
-                  {/* Gain/Loss */}
-                  <div className="hidden md:flex items-center justify-end">
-                    <div className="text-right">
+                    </td>
+                    <td className="px-2 py-4 text-right text-sm hidden md:table-cell">{formatWeight(holding.weight)}</td>
+                    <td className="px-2 py-4 text-right text-sm hidden md:table-cell">{holding.quantity}</td>
+                    <td className="px-2 py-4 text-right text-sm hidden md:table-cell">{formatCurrency(totalCost)}</td>
+                    <td className="px-2 py-4 text-right text-sm font-medium">{formatCurrency(currentValue)}</td>
+                    <td className="px-2 py-4 text-right hidden md:table-cell">
                       <p className={`text-sm font-medium ${isPositive ? 'text-green' : 'text-red'}`}>
                         {isPositive ? '+' : ''}{formatCurrency(gainLoss)}
                       </p>
                       <p className={`text-[11px] ${isPositive ? 'text-green/70' : 'text-red/70'}`}>
                         {formatPercent(gainLossPercent)}
                       </p>
-                    </div>
-                  </div>
-
-                  {/* Premium */}
-                  <div className="hidden md:flex items-center justify-end">
-                    <span className={`text-xs ${premiumOverSpot > 0 ? 'text-gold' : 'text-green'}`}>
-                      {premiumOverSpot > 0 ? '+' : ''}{premiumOverSpot.toFixed(1)}%
-                    </span>
-                  </div>
-                </motion.div>
-              );
-            })}
-          </motion.div>
+                    </td>
+                    <td className="px-5 py-4 text-right hidden md:table-cell">
+                      <span className={`text-xs ${premiumOverSpot > 0 ? 'text-gold' : 'text-green'}`}>
+                        {premiumOverSpot > 0 ? '+' : ''}{premiumOverSpot.toFixed(1)}%
+                      </span>
+                    </td>
+                  </motion.tr>
+                );
+              })}
+            </motion.tbody>
+          </table>
 
           {/* Footer */}
           <div className="px-5 py-3 bg-surface-alt text-xs text-text-muted flex items-center justify-between">

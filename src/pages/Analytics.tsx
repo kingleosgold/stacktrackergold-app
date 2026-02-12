@@ -47,6 +47,125 @@ const tooltipStyle = {
   itemStyle: { color: 'var(--color-text)' },
 };
 
+const SPOT_CHART_COLORS: Record<Metal, string> = {
+  gold: '#D4A843',
+  silver: '#C0C0C0',
+  platinum: '#4A90D9',
+  palladium: '#6BBF8A',
+};
+
+function SpotPriceChart({ metal }: { metal: Metal }) {
+  const color = SPOT_CHART_COLORS[metal];
+  const [range, setRange] = useState<typeof TIME_RANGES[number]>('1M');
+  const [data, setData] = useState<SpotPriceHistoryPoint[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    const apiRange = RANGE_API_PARAM[range] || '1M';
+    fetchSpotPriceHistory(apiRange)
+      .then((res) => {
+        let d = res.data || [];
+        const sliceDays = RANGE_SLICE_DAYS[range];
+        if (sliceDays != null && d.length > sliceDays) d = d.slice(-sliceDays);
+        setData(d);
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, [range]);
+
+  const chartData = useMemo(() => {
+    return data.map((point) => ({
+      date: new Date(point.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      fullDate: new Date(point.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      price: point[metal] || 0,
+    }));
+  }, [data, metal]);
+
+  const latestPrice = chartData.length > 0 ? chartData[chartData.length - 1].price : 0;
+  const firstPrice = chartData.length > 0 ? chartData[0].price : 0;
+  const changePercent = firstPrice > 0 ? ((latestPrice - firstPrice) / firstPrice) * 100 : 0;
+
+  return (
+    <div className="rounded-xl bg-surface border border-border p-5">
+      <div className="flex items-center justify-between mb-1">
+        <h3 className="text-sm font-semibold" style={{ color }}>{METAL_LABELS[metal]}</h3>
+        <div className="flex gap-0.5">
+          {TIME_RANGES.map((r) => (
+            <button
+              key={r}
+              onClick={() => setRange(r)}
+              className={`px-2 py-1 rounded-md text-[10px] font-medium transition-colors ${
+                range === r
+                  ? 'bg-gold/15 text-gold'
+                  : 'text-text-muted hover:text-text-secondary'
+              }`}
+            >
+              {r}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="flex items-baseline gap-2 mb-3">
+        <span className="text-lg font-bold">{formatCurrency(latestPrice)}</span>
+        {changePercent !== 0 && (
+          <span className={`text-xs font-medium ${changePercent >= 0 ? 'text-green' : 'text-red'}`}>
+            {changePercent >= 0 ? '+' : ''}{changePercent.toFixed(2)}%
+          </span>
+        )}
+      </div>
+      <div className="h-40">
+        {loading ? (
+          <div className="w-full h-full rounded-lg bg-text/5 animate-pulse" />
+        ) : (
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={chartData}>
+              <defs>
+                <linearGradient id={`spot-${metal}`} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={color} stopOpacity={0.25} />
+                  <stop offset="100%" stopColor={color} stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-chart-grid)" />
+              <XAxis
+                dataKey="date"
+                tick={{ fill: 'var(--color-chart-label)', fontSize: 10 }}
+                axisLine={{ stroke: 'var(--color-chart-grid)' }}
+                tickLine={false}
+                interval="preserveStartEnd"
+              />
+              <YAxis
+                tick={{ fill: 'var(--color-chart-label)', fontSize: 10 }}
+                axisLine={false}
+                tickLine={false}
+                tickFormatter={(v) => metal === 'gold' || metal === 'platinum' || metal === 'palladium' ? `$${v.toLocaleString()}` : `$${v}`}
+                width={55}
+                domain={['auto', 'auto']}
+              />
+              <Tooltip
+                formatter={(value: number | undefined) => [value != null ? formatCurrency(value) : '--', METAL_LABELS[metal]]}
+                labelFormatter={(_, payload) => {
+                  const entry = payload?.[0]?.payload;
+                  return entry?.fullDate || '';
+                }}
+                {...tooltipStyle}
+              />
+              <Area
+                type="monotone"
+                dataKey="price"
+                stroke={color}
+                strokeWidth={2}
+                fill={`url(#spot-${metal})`}
+                dot={false}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function StatCard({ label, value, subtext, color }: {
   label: string;
   value: string;
@@ -176,10 +295,30 @@ export default function Analytics() {
   }, [holdings, prices, getTotalsByMetal]);
 
   // Compute portfolio value history from backend spot-price-history × holdings oz
+  // Filter to earliest holding purchase date so chart doesn't go back to 1914
   const portfolioHistory = useMemo(() => {
     if (priceHistory.length === 0 || holdings.length === 0) return [];
     const totals = getTotalsByMetal();
-    return priceHistory.map((point) => {
+
+    // Find earliest holding purchase date
+    const dates = holdings
+      .map((h) => h.purchaseDate)
+      .filter(Boolean)
+      .sort();
+    const earliestDate = dates.length > 0 ? dates[0] : null;
+
+    // Filter price data to start from earliest holding date (or last 1Y if no dates)
+    let filtered = priceHistory;
+    if (earliestDate) {
+      filtered = priceHistory.filter((p) => p.date >= earliestDate);
+    } else {
+      const oneYearAgo = new Date();
+      oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+      const cutoff = oneYearAgo.toISOString().slice(0, 10);
+      filtered = priceHistory.filter((p) => p.date >= cutoff);
+    }
+
+    return filtered.map((point) => {
       const value =
         totals.gold.totalOz * (point.gold || 0) +
         totals.silver.totalOz * (point.silver || 0) +
@@ -458,6 +597,16 @@ export default function Analytics() {
                 </p>
                 <p className="text-lg font-bold">{formatWeight(m.oz)}</p>
               </div>
+            ))}
+          </div>
+        </motion.div>
+
+        {/* Spot Price History */}
+        <motion.div variants={item}>
+          <h2 className="text-sm font-medium text-text-muted uppercase tracking-wider mb-3">Spot Price History</h2>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {METALS.map((metal) => (
+              <SpotPriceChart key={metal} metal={metal} />
             ))}
           </div>
         </motion.div>
