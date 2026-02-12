@@ -230,6 +230,7 @@ function SpotPriceChart({ metal, spotPrice }: { metal: Metal; spotPrice: number 
                   strokeWidth={2}
                   fill={`url(#spot-${metal})`}
                   dot={false}
+                  activeDot={isAllRange ? false : undefined}
                   isAnimationActive={false}
                 />
               </AreaChart>
@@ -298,9 +299,45 @@ export default function Analytics() {
 
   const getSpotPrice = (metal: Metal): number => prices?.[metal] || 0;
 
+  // Find the earliest VALID purchase date across all holdings.
+  // A valid date is one that exists AND is more than 7 days ago.
+  const earliestPurchaseDate = useMemo(() => {
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const cutoff = sevenDaysAgo.toISOString().split('T')[0];
+
+    let earliest: string | null = null;
+    for (const h of holdings) {
+      if (h.purchaseDate && h.purchaseDate <= cutoff) {
+        if (!earliest || h.purchaseDate < earliest) {
+          earliest = h.purchaseDate;
+        }
+      }
+    }
+    return earliest;
+  }, [holdings]);
+
+  // Pick the best API range for "All" based on earliest purchase date.
+  // The ALL endpoint returns 60 points over 110 years — too sparse for recent purchases.
+  // Instead, pick the tightest range that covers the full holding period for max density.
+  const smartApiRange = useMemo(() => {
+    if (selectedRange !== 'All' || !earliestPurchaseDate) {
+      return RANGE_API_PARAM[selectedRange] || '1M';
+    }
+    const now = new Date();
+    const earliest = new Date(earliestPurchaseDate);
+    const monthsAgo = (now.getFullYear() - earliest.getFullYear()) * 12 + (now.getMonth() - earliest.getMonth());
+
+    if (monthsAgo < 1) return '1M';     // < 1 month → daily data
+    if (monthsAgo < 3) return '3M';     // 1-3 months → ~60 daily points
+    if (monthsAgo < 6) return '6M';     // 3-6 months → ~60 daily points
+    if (monthsAgo < 60) return '5Y';    // 6 months–5 years → 60 points from 2021
+    return 'ALL';                        // 5+ years → 60 sampled points
+  }, [selectedRange, earliestPurchaseDate]);
+
   // Fetch price history from backend API when range changes
   useEffect(() => {
-    const apiRange = RANGE_API_PARAM[selectedRange] || '1M';
+    const apiRange = selectedRange === 'All' ? smartApiRange : (RANGE_API_PARAM[selectedRange] || '1M');
     fetchSpotPriceHistory(apiRange)
       .then((res) => {
         let data = res.data || [];
@@ -311,7 +348,7 @@ export default function Analytics() {
         setPriceHistory(data);
       })
       .catch(console.error);
-  }, [selectedRange]);
+  }, [selectedRange, smartApiRange]);
 
   const stats = useMemo(() => {
     if (!prices) return null;
@@ -402,24 +439,6 @@ export default function Analytics() {
       totalCost,
     };
   }, [holdings, prices, getTotalsByMetal]);
-
-  // Find the earliest VALID purchase date across all holdings.
-  // A valid date is one that exists AND is more than 7 days ago.
-  const earliestPurchaseDate = useMemo(() => {
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    const cutoff = sevenDaysAgo.toISOString().split('T')[0];
-
-    let earliest: string | null = null;
-    for (const h of holdings) {
-      if (h.purchaseDate && h.purchaseDate <= cutoff) {
-        if (!earliest || h.purchaseDate < earliest) {
-          earliest = h.purchaseDate;
-        }
-      }
-    }
-    return earliest;
-  }, [holdings]);
 
   // Compute portfolio value history from backend spot-price-history × holdings oz
   const portfolioHistory = useMemo(() => {
