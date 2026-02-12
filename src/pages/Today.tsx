@@ -65,7 +65,7 @@ function MiniSparkline({ data, color, id, label }: {
   };
 
   return (
-    <div className="w-16 h-8">
+    <div className="relative w-16 h-8">
       <ResponsiveContainer width="100%" height="100%">
         <AreaChart data={data}>
           <defs>
@@ -83,6 +83,7 @@ function MiniSparkline({ data, color, id, label }: {
               padding: '6px 10px',
               whiteSpace: 'nowrap' as const,
             }}
+            wrapperStyle={{ transform: 'translateY(-100%)', marginTop: '-8px', zIndex: 50 }}
             labelStyle={{ display: 'none' }}
             formatter={(value: number | undefined, _name: string | undefined, entry: any) => {
               if (value == null) return ['--', ''];
@@ -153,6 +154,7 @@ function PortfolioSparkline({ data, color, sparklineRaw }: {
               padding: '6px 10px',
               whiteSpace: 'nowrap' as const,
             }}
+            wrapperStyle={{ transform: 'translateY(-100%)', marginTop: '-8px', zIndex: 50 }}
             labelStyle={{ display: 'none' }}
             formatter={(value: number | undefined, _name: string | undefined, entry: any) => {
               if (value == null) return ['--', ''];
