@@ -16,6 +16,7 @@ interface AuthContextType {
   linkWithGoogle: () => Promise<{ error: AuthError | null }>;
   linkWithApple: () => Promise<{ error: AuthError | null }>;
   updateEmailPassword: (email: string, password: string) => Promise<{ error: AuthError | null }>;
+  resetPasswordForEmail: (email: string) => Promise<{ error: AuthError | null }>;
   getLinkedProviders: () => string[];
   hasEmailPassword: () => boolean;
 }
@@ -131,6 +132,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { error };
   };
 
+  const resetPasswordForEmail = async (email: string) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    return { error };
+  };
+
   const getLinkedProviders = (): string[] => {
     if (!user?.identities) return [];
     return user.identities.map((identity) => identity.provider);
@@ -154,6 +162,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     linkWithGoogle,
     linkWithApple,
     updateEmailPassword,
+    resetPasswordForEmail,
     getLinkedProviders,
     hasEmailPassword,
   };

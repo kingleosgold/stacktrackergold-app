@@ -8,6 +8,7 @@ import Analytics from './pages/Analytics';
 import Tools from './pages/Tools';
 import Settings from './pages/Settings';
 import Auth from './pages/Auth';
+import ResetPassword from './pages/ResetPassword';
 
 function App() {
   return (
@@ -15,6 +16,7 @@ function App() {
       <ErrorBoundary>
         <Routes>
           <Route path="/auth" element={<Auth />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/" element={<Layout />}>
             <Route index element={<Today />} />
             <Route path="portfolio" element={<Portfolio />} />
