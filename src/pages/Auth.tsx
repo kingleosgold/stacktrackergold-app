@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { createCheckoutSession } from '../services/api';
+import { createCheckoutSession, verifyStripeSession } from '../services/api';
 
 const CHECKOUT_STORAGE_KEY = 'stg_checkout_redirect';
 
@@ -43,6 +43,23 @@ export default function Auth() {
       }
     } catch { /* ignore */ }
     return null;
+  }, []);
+
+  // If returning from Stripe with session_id, verify and redirect to Settings
+  useEffect(() => {
+    const sessionId = searchParams.get('session_id');
+    if (!sessionId) return;
+
+    setCheckoutRedirecting(true);
+    verifyStripeSession(sessionId)
+      .then(() => {
+        navigate('/settings?session_id=' + encodeURIComponent(sessionId), { replace: true });
+      })
+      .catch(() => {
+        // Redirect to settings anyway — webhook may handle it
+        navigate('/settings?session_id=' + encodeURIComponent(sessionId), { replace: true });
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // After sign in, redirect to Stripe checkout

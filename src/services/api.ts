@@ -269,6 +269,19 @@ export async function createCheckoutSession(
   return response.json();
 }
 
+export async function verifyStripeSession(sessionId: string): Promise<{ success: boolean; tier?: string }> {
+  const response = await fetch(`${API_BASE_URL}/api/stripe/verify-session`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ session_id: sessionId }),
+  });
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.error || `Verify failed: ${response.status}`);
+  }
+  return response.json();
+}
+
 export async function createCustomerPortal(userId: string): Promise<{ url: string }> {
   const response = await fetch(`${API_BASE_URL}/api/stripe/customer-portal`, {
     method: 'POST',

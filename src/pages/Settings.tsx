@@ -7,7 +7,7 @@ import type { Theme } from '../hooks/useTheme';
 import { useAuth } from '../contexts/AuthContext';
 import { useSubscription } from '../hooks/useSubscription';
 import { clearAllHoldings } from '../services/holdings';
-import { syncSubscription, createCustomerPortal } from '../services/api';
+import { syncSubscription, createCustomerPortal, verifyStripeSession } from '../services/api';
 import { PricingModal } from '../components/PricingModal';
 
 const APP_VERSION = '2.0.0';
@@ -184,15 +184,29 @@ export default function Settings() {
   const [showPricing, setShowPricing] = useState(false);
   const [managingPortal, setManagingPortal] = useState(false);
 
-  // Handle Stripe checkout success redirect
+  // Handle Stripe checkout success redirect — verify session to ensure tier updates
   useEffect(() => {
     const sessionId = searchParams.get('session_id');
-    if (sessionId) {
-      showStatus('Subscription activated! Welcome aboard.');
-      refetchTier();
-      // Clean up URL
-      window.history.replaceState({}, '', window.location.pathname);
-    }
+    if (!sessionId) return;
+
+    // Clean up URL immediately
+    window.history.replaceState({}, '', window.location.pathname);
+
+    verifyStripeSession(sessionId)
+      .then(async (result) => {
+        await refetchTier();
+        if (result.success) {
+          const label = result.tier === 'lifetime' ? 'Lifetime' : result.tier === 'gold' ? 'Gold' : 'Gold';
+          showStatus(`${label} subscription activated! Welcome aboard.`);
+        } else {
+          showStatus('Subscription activated! Welcome aboard.');
+        }
+      })
+      .catch(async () => {
+        // Fallback: just refetch tier (webhook may have already handled it)
+        await refetchTier();
+        showStatus('Subscription activated! Welcome aboard.');
+      });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const [showEmailForm, setShowEmailForm] = useState(false);
