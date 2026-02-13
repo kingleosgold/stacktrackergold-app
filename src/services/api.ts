@@ -284,3 +284,27 @@ export async function createCustomerPortal(userId: string): Promise<{ url: strin
   }
   return response.json();
 }
+
+// ─── AI Stack Advisor ────────────────────────────────────────────
+
+export interface AdvisorMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+export async function sendAdvisorMessage(
+  userId: string,
+  message: string,
+  conversationHistory: AdvisorMessage[],
+): Promise<{ response: string }> {
+  const response = await fetch(`${API_BASE_URL}/api/advisor/chat`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId, message, conversationHistory }),
+  });
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.error || `Advisor failed: ${response.status}`);
+  }
+  return response.json();
+}

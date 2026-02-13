@@ -445,22 +445,34 @@ export default function Analytics() {
     if (priceHistory.length === 0 || holdings.length === 0) return [];
     const totals = getTotalsByMetal();
 
-    // For "All": if we have a valid earliest purchase date, filter to points on/after it.
-    // If no valid purchase dates (null/missing/all recent), show 1Y worth of data instead.
+    // For "All": filter to points on/after the earliest purchase date.
     let filtered = priceHistory;
     if (selectedRange === 'All') {
+      if (priceHistory.length > 0) {
+        console.log(`[Portfolio All] Raw API data: first=${priceHistory[0].date}, last=${priceHistory[priceHistory.length - 1].date}, count=${priceHistory.length}`);
+      }
+      console.log(`[Portfolio All] Earliest purchase date: ${earliestPurchaseDate}`);
+
       if (earliestPurchaseDate) {
         filtered = priceHistory.filter((point) => point.date >= earliestPurchaseDate);
+        console.log(`[Portfolio All] After filter: ${filtered.length} points (first=${filtered[0]?.date})`);
+        // If filtering left too few points, use the full API data (smartApiRange already picked an optimal range)
+        if (filtered.length < 3) {
+          console.log(`[Portfolio All] Too few points after filter, using full API data`);
+          filtered = priceHistory;
+        }
       } else {
         // No valid purchase dates — default to last ~1Y of data
         const oneYearAgo = new Date();
         oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
         const oneYearAgoStr = oneYearAgo.toISOString().split('T')[0];
         filtered = priceHistory.filter((point) => point.date >= oneYearAgoStr);
+        console.log(`[Portfolio All] No purchase dates, defaulting to 1Y: ${filtered.length} points`);
+        if (filtered.length < 3) {
+          filtered = priceHistory;
+        }
       }
     }
-
-    console.log(`Earliest purchase date: ${earliestPurchaseDate}, Total API points: ${priceHistory.length}, Points after filter: ${filtered.length}`);
 
     return filtered.map((point) => {
       const value =

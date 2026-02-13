@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Area, AreaChart, ResponsiveContainer, LineChart, Line, XAxis, Tooltip, CartesianGrid } from 'recharts';
+import { Area, AreaChart, ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { useHoldings } from '../hooks/useHoldings';
 import { useSpotPrices } from '../hooks/useSpotPrices';
 import { useSubscription } from '../hooks/useSubscription';
@@ -10,6 +10,7 @@ import { formatCurrency, formatPercent, formatChange } from '../utils/format';
 import { METAL_COLORS, METAL_LABELS, METALS } from '../utils/constants';
 import { CardSkeleton } from '../components/Skeleton';
 import { GatedContent } from '../components/GatedContent';
+import { AdvisorChat } from '../components/AdvisorChat';
 import type { Metal } from '../types/holding';
 
 const container = {
@@ -64,6 +65,21 @@ function MiniSparkline({ data, color, id, label }: {
     return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
+  // Tight Y-axis domain: show actual volatility instead of flat line
+  const values = data.map((d) => d.v).filter((v) => v > 0);
+  const dataMin = Math.min(...values);
+  const dataMax = Math.max(...values);
+  const range = dataMax - dataMin;
+  const mean = (dataMin + dataMax) / 2;
+  // If range < 0.5% of price, force 0.5% range centered on mean
+  const minRange = mean * 0.005;
+  const effectiveRange = Math.max(range, minRange);
+  const padding = effectiveRange * 0.1;
+  const yDomain: [number, number] = [
+    (range < minRange ? mean - effectiveRange / 2 : dataMin) - padding,
+    (range < minRange ? mean + effectiveRange / 2 : dataMax) + padding,
+  ];
+
   return (
     <div className="relative w-16 h-8">
       <ResponsiveContainer width="100%" height="100%">
@@ -74,6 +90,7 @@ function MiniSparkline({ data, color, id, label }: {
               <stop offset="100%" stopColor={color} stopOpacity={0} />
             </linearGradient>
           </defs>
+          <YAxis hide domain={yDomain} />
           <Tooltip
             contentStyle={{
               backgroundColor: 'var(--color-chart-bg)',
@@ -129,6 +146,21 @@ function PortfolioSparkline({ data, color, sparklineRaw }: {
     }));
   }, [data, sparklineRaw]);
 
+  // Tight Y-axis domain: show actual portfolio volatility
+  const values = chartData.map((d) => d.v).filter((v) => v > 0);
+  const dataMin = Math.min(...values);
+  const dataMax = Math.max(...values);
+  const range = dataMax - dataMin;
+  const mean = (dataMin + dataMax) / 2;
+  // If range < 1% of portfolio value, force 1% range centered on mean
+  const minRange = mean * 0.01;
+  const effectiveRange = Math.max(range, minRange);
+  const padding = effectiveRange * 0.1;
+  const yDomain: [number, number] = [
+    (range < minRange ? mean - effectiveRange / 2 : dataMin) - padding,
+    (range < minRange ? mean + effectiveRange / 2 : dataMax) + padding,
+  ];
+
   const formatTime = (iso: string) => {
     if (!iso) return '';
     const d = new Date(iso);
@@ -145,6 +177,7 @@ function PortfolioSparkline({ data, color, sparklineRaw }: {
               <stop offset="100%" stopColor={color} stopOpacity={0} />
             </linearGradient>
           </defs>
+          <YAxis hide domain={yDomain} />
           <Tooltip
             contentStyle={{
               backgroundColor: 'var(--color-chart-bg)',
@@ -773,19 +806,12 @@ export default function Today() {
               </GatedContent>
             </motion.div>
 
-            {/* AI Stack Advisor (GOLD) — Placeholder */}
+            {/* AI Stack Advisor (GOLD) */}
             <motion.div variants={item}>
-              <h2 className="text-sm font-medium text-text-muted uppercase tracking-wider mb-3">AI Stack Advisor</h2>
+              <h2 className="text-sm font-medium text-text-muted uppercase tracking-wider mb-1">AI Stack Advisor</h2>
+              <p className="text-xs text-text-muted mb-3">Ask anything about your portfolio and the precious metals market</p>
               <GatedContent requiredTier="gold" featureName="AI Stack Advisor">
-                <div className="rounded-xl bg-surface border border-border p-6 text-center">
-                  <div className="w-10 h-10 mx-auto rounded-full bg-gold/10 flex items-center justify-center mb-3">
-                    <svg className="w-5 h-5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3v11.25A2.25 2.25 0 006 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0118 16.5h-2.25m-7.5 0h7.5m-7.5 0l-1 3m8.5-3l1 3m0 0l.5 1.5m-.5-1.5h-9.5m0 0l-.5 1.5M9 11.25v1.5M12 9v3.75m3-6v6" />
-                    </svg>
-                  </div>
-                  <p className="text-sm font-medium text-text-secondary">Smart rebalancing suggestions</p>
-                  <p className="text-xs text-text-muted mt-1">AI-driven portfolio optimization advice</p>
-                </div>
+                <AdvisorChat />
               </GatedContent>
             </motion.div>
 
