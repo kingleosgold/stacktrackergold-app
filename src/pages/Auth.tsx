@@ -343,11 +343,21 @@ export default function Auth() {
 
             {mode !== 'forgot' && (
               <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label htmlFor="password" className="block text-sm font-medium">
-                    Password
-                  </label>
-                  {mode === 'signin' && (
+                <label htmlFor="password" className="block text-sm font-medium mb-2">
+                  Password
+                </label>
+                <input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  minLength={6}
+                  className="w-full p-3 rounded-lg bg-background border border-border focus:border-gold focus:outline-none"
+                  placeholder="••••••••"
+                />
+                {mode === 'signin' && (
+                  <div className="text-right mt-1.5">
                     <button
                       type="button"
                       onClick={() => {
@@ -361,18 +371,8 @@ export default function Auth() {
                     >
                       Forgot password?
                     </button>
-                  )}
-                </div>
-                <input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  minLength={6}
-                  className="w-full p-3 rounded-lg bg-background border border-border focus:border-gold focus:outline-none"
-                  placeholder="••••••••"
-                />
+                  </div>
+                )}
               </div>
             )}
 
