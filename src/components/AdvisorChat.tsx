@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useSubscription } from '../hooks/useSubscription';
+import { PricingModal } from './PricingModal';
 import { sendAdvisorMessage } from '../services/api';
 import type { AdvisorMessage } from '../services/api';
 
@@ -76,16 +78,17 @@ function boldify(text: string): string {
 
 export function AdvisorChat() {
   const { user } = useAuth();
+  const { isGold, tier } = useSubscription();
   const [messages, setMessages] = useState<AdvisorMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [usageCount, setUsageCount] = useState(() => getUsageToday().count);
+  const [showPricing, setShowPricing] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const remaining = DAILY_LIMIT - usageCount;
-  const isLimited = remaining <= 0;
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -95,7 +98,7 @@ export function AdvisorChat() {
   }, [messages, loading]);
 
   const sendMessage = async (text: string) => {
-    if (!user || !text.trim() || loading || isLimited) return;
+    if (!user || !isGold || !text.trim() || loading || remaining <= 0) return;
 
     const userMsg: AdvisorMessage = { role: 'user', content: text.trim() };
     const updatedMessages = [...messages, userMsg];
@@ -142,9 +145,8 @@ export function AdvisorChat() {
               {SUGGESTED_QUESTIONS.map((q) => (
                 <button
                   key={q}
-                  onClick={() => sendMessage(q)}
-                  disabled={isLimited}
-                  className="text-xs px-3 py-1.5 rounded-full border border-gold/30 text-gold hover:bg-gold/10 transition-colors disabled:opacity-40"
+                  onClick={() => isGold ? sendMessage(q) : setShowPricing(true)}
+                  className="text-xs px-3 py-1.5 rounded-full border border-gold/30 text-gold hover:bg-gold/10 transition-colors"
                 >
                   {q}
                 </button>
@@ -208,33 +210,50 @@ export function AdvisorChat() {
 
       {/* Input bar */}
       <div className="border-t border-border p-3">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-[10px] text-text-muted">
-            {isLimited ? 'Daily limit reached. Resets at midnight.' : `${remaining} question${remaining === 1 ? '' : 's'} remaining today`}
-          </span>
-        </div>
-        <form onSubmit={handleSubmit} className="flex gap-2">
-          <input
-            ref={inputRef}
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value.slice(0, 500))}
-            onKeyDown={handleKeyDown}
-            placeholder={isLimited ? 'Daily limit reached' : 'Ask about your portfolio...'}
-            disabled={loading || isLimited}
-            className="flex-1 px-3 py-2 rounded-lg bg-background border border-border text-sm focus:border-gold focus:outline-none disabled:opacity-50 placeholder:text-text-muted/50"
-          />
+        {!isGold ? (
           <button
-            type="submit"
-            disabled={loading || isLimited || !input.trim()}
-            className="px-3 py-2 bg-gold text-background rounded-lg hover:bg-gold-hover transition-colors disabled:opacity-40"
+            onClick={() => setShowPricing(true)}
+            className="w-full py-2.5 text-xs text-gold hover:text-gold-hover transition-colors text-center"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
-            </svg>
+            Try Gold Free for 7 Days to unlock AI Stack Advisor
           </button>
-        </form>
+        ) : (
+          <>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[10px] text-text-muted">
+                {remaining <= 0 ? 'Daily limit reached. Resets at midnight.' : `${remaining} question${remaining === 1 ? '' : 's'} remaining today`}
+              </span>
+            </div>
+            <form onSubmit={handleSubmit} className="flex gap-2">
+              <input
+                ref={inputRef}
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value.slice(0, 500))}
+                onKeyDown={handleKeyDown}
+                placeholder={remaining <= 0 ? 'Daily limit reached' : 'Ask about your portfolio...'}
+                disabled={loading || remaining <= 0}
+                className="flex-1 px-3 py-2 rounded-lg bg-background border border-border text-sm focus:border-gold focus:outline-none disabled:opacity-50 placeholder:text-text-muted/50"
+              />
+              <button
+                type="submit"
+                disabled={loading || remaining <= 0 || !input.trim()}
+                className="px-3 py-2 bg-gold text-background rounded-lg hover:bg-gold-hover transition-colors disabled:opacity-40"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
+                </svg>
+              </button>
+            </form>
+          </>
+        )}
       </div>
+
+      <PricingModal
+        isOpen={showPricing}
+        onClose={() => setShowPricing(false)}
+        currentTier={tier}
+      />
     </div>
   );
 }

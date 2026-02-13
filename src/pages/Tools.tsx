@@ -2,6 +2,8 @@ import { useState, useMemo, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useSpotPrices } from '../hooks/useSpotPrices';
 import { useHoldings } from '../hooks/useHoldings';
+import { useSubscription } from '../hooks/useSubscription';
+import { BlurredContent } from '../components/BlurredContent';
 import { formatCurrency } from '../utils/format';
 import { METAL_COLORS, METAL_LABELS, METALS } from '../utils/constants';
 import type { Metal } from '../types/holding';
@@ -43,7 +45,7 @@ function ToolSection({ title, icon, children }: { title: string; icon: React.Rea
 }
 
 // What If Speculation Tool
-function WhatIfTool() {
+function WhatIfTool({ isGold }: { isGold: boolean }) {
   const { prices } = useSpotPrices();
   const { holdings, getTotalsByMetal } = useHoldings();
 
@@ -123,18 +125,20 @@ function WhatIfTool() {
         })}
       </div>
       {results && results.details.length > 0 && (
-        <div className="mt-4 p-4 rounded-lg bg-background border border-border">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-text-muted">Projected Portfolio Value</span>
-            <span className="text-lg font-bold">{formatCurrency(results.projectedTotal)}</span>
+        <BlurredContent show={isGold} upgradeText="Try Gold Free for 7 Days">
+          <div className="mt-4 p-4 rounded-lg bg-background border border-border">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-text-muted">Projected Portfolio Value</span>
+              <span className="text-lg font-bold">{formatCurrency(results.projectedTotal)}</span>
+            </div>
+            <div className="flex items-center justify-between mt-1">
+              <span className="text-xs text-text-muted">Change</span>
+              <span className={`text-sm font-semibold ${results.delta >= 0 ? 'text-green' : 'text-red'}`}>
+                {results.delta >= 0 ? '+' : ''}{formatCurrency(results.delta)}
+              </span>
+            </div>
           </div>
-          <div className="flex items-center justify-between mt-1">
-            <span className="text-xs text-text-muted">Change</span>
-            <span className={`text-sm font-semibold ${results.delta >= 0 ? 'text-green' : 'text-red'}`}>
-              {results.delta >= 0 ? '+' : ''}{formatCurrency(results.delta)}
-            </span>
-          </div>
-        </div>
+        </BlurredContent>
       )}
     </div>
   );
@@ -201,7 +205,7 @@ function JunkSilverCalculator() {
 }
 
 // Break-Even Analysis
-function BreakEvenAnalysis() {
+function BreakEvenAnalysis({ isGold }: { isGold: boolean }) {
   const { prices } = useSpotPrices();
   const { holdings, getTotalsByMetal } = useHoldings();
 
@@ -236,46 +240,48 @@ function BreakEvenAnalysis() {
   return (
     <div className="space-y-3">
       <p className="text-xs text-text-muted">The spot price each metal needs to reach for you to break even.</p>
-      {analysis.map((a) => {
-        const aboveBreakEven = a.diff >= 0;
-        return (
-          <div key={a.metal} className="p-4 rounded-lg bg-background border border-border">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-semibold" style={{ color: METAL_COLORS[a.metal] }}>
-                {METAL_LABELS[a.metal]}
-              </span>
-              <span className={`text-xs font-medium ${aboveBreakEven ? 'text-green' : 'text-red'}`}>
-                {aboveBreakEven ? 'Above' : 'Below'} break-even
-              </span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <div>
-                <p className="text-text-muted text-xs">Break-Even</p>
-                <p className="font-bold">{formatCurrency(a.breakEvenPrice)}/oz</p>
+      <BlurredContent show={isGold} upgradeText="Try Gold Free for 7 Days">
+        {analysis.map((a) => {
+          const aboveBreakEven = a.diff >= 0;
+          return (
+            <div key={a.metal} className="p-4 rounded-lg bg-background border border-border mb-3 last:mb-0">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-semibold" style={{ color: METAL_COLORS[a.metal] }}>
+                  {METAL_LABELS[a.metal]}
+                </span>
+                <span className={`text-xs font-medium ${aboveBreakEven ? 'text-green' : 'text-red'}`}>
+                  {aboveBreakEven ? 'Above' : 'Below'} break-even
+                </span>
               </div>
-              <div className="text-right">
-                <p className="text-text-muted text-xs">Current Spot</p>
-                <p className="font-bold">{formatCurrency(a.currentPrice)}/oz</p>
+              <div className="flex justify-between text-sm">
+                <div>
+                  <p className="text-text-muted text-xs">Break-Even</p>
+                  <p className="font-bold">{formatCurrency(a.breakEvenPrice)}/oz</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-text-muted text-xs">Current Spot</p>
+                  <p className="font-bold">{formatCurrency(a.currentPrice)}/oz</p>
+                </div>
+              </div>
+              <div className="mt-2 h-1.5 rounded-full bg-border overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all"
+                  style={{
+                    width: `${Math.min(100, Math.max(0, (a.currentPrice / a.breakEvenPrice) * 100))}%`,
+                    backgroundColor: aboveBreakEven ? 'var(--color-green)' : 'var(--color-red)',
+                  }}
+                />
               </div>
             </div>
-            <div className="mt-2 h-1.5 rounded-full bg-border overflow-hidden">
-              <div
-                className="h-full rounded-full transition-all"
-                style={{
-                  width: `${Math.min(100, Math.max(0, (a.currentPrice / a.breakEvenPrice) * 100))}%`,
-                  backgroundColor: aboveBreakEven ? 'var(--color-green)' : 'var(--color-red)',
-                }}
-              />
-            </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </BlurredContent>
     </div>
   );
 }
 
 // GSR Swap Calculator
-function GSRSwapCalculator() {
+function GSRSwapCalculator({ isGold }: { isGold: boolean }) {
   const { prices } = useSpotPrices();
   const [goldOz, setGoldOz] = useState('1');
 
@@ -308,27 +314,29 @@ function GSRSwapCalculator() {
         />
       </div>
       {result && (
-        <div className="p-4 rounded-lg bg-background border border-border space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-text-muted">Gold/Silver Ratio</span>
-            <span className="text-sm font-bold">{result.ratio.toFixed(1)}:1</span>
-          </div>
-          <div className="flex items-center gap-3 py-3 border-t border-b border-border">
-            <div className="flex-1 text-center">
-              <p className="text-xs text-text-muted mb-1">Your Gold</p>
-              <p className="text-lg font-bold text-[#D4A843]">{goldOz} oz</p>
-              <p className="text-xs text-text-muted">{formatCurrency(result.goldValue)}</p>
+        <BlurredContent show={isGold} upgradeText="Try Gold Free for 7 Days">
+          <div className="p-4 rounded-lg bg-background border border-border space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-text-muted">Gold/Silver Ratio</span>
+              <span className="text-sm font-bold">{result.ratio.toFixed(1)}:1</span>
             </div>
-            <svg className="w-5 h-5 text-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />
-            </svg>
-            <div className="flex-1 text-center">
-              <p className="text-xs text-text-muted mb-1">Silver Equivalent</p>
-              <p className="text-lg font-bold text-[#C0C0C0]">{result.silverOz.toFixed(1)} oz</p>
-              <p className="text-xs text-text-muted">{formatCurrency(result.silverValue)}</p>
+            <div className="flex items-center gap-3 py-3 border-t border-b border-border">
+              <div className="flex-1 text-center">
+                <p className="text-xs text-text-muted mb-1">Your Gold</p>
+                <p className="text-lg font-bold text-[#D4A843]">{goldOz} oz</p>
+                <p className="text-xs text-text-muted">{formatCurrency(result.goldValue)}</p>
+              </div>
+              <svg className="w-5 h-5 text-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />
+              </svg>
+              <div className="flex-1 text-center">
+                <p className="text-xs text-text-muted mb-1">Silver Equivalent</p>
+                <p className="text-lg font-bold text-[#C0C0C0]">{result.silverOz.toFixed(1)} oz</p>
+                <p className="text-xs text-text-muted">{formatCurrency(result.silverValue)}</p>
+              </div>
             </div>
           </div>
-        </div>
+        </BlurredContent>
       )}
     </div>
   );
@@ -508,6 +516,8 @@ function CSVTools() {
 }
 
 export default function Tools() {
+  const { isGold } = useSubscription();
+
   return (
     <div className="max-w-4xl mx-auto p-4 md:p-6 lg:p-8">
       <h1 className="text-2xl font-bold tracking-tight mb-6">Tools</h1>
@@ -522,7 +532,7 @@ export default function Tools() {
             </svg>
           }
         >
-          <WhatIfTool />
+          <WhatIfTool isGold={isGold} />
         </ToolSection>
 
         <ToolSection
@@ -544,7 +554,7 @@ export default function Tools() {
             </svg>
           }
         >
-          <BreakEvenAnalysis />
+          <BreakEvenAnalysis isGold={isGold} />
         </ToolSection>
 
         <ToolSection
@@ -555,7 +565,7 @@ export default function Tools() {
             </svg>
           }
         >
-          <GSRSwapCalculator />
+          <GSRSwapCalculator isGold={isGold} />
         </ToolSection>
 
         <ToolSection

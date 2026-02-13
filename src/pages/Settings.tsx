@@ -177,7 +177,7 @@ export default function Settings() {
     user, isConfigured, signOut, linkWithGoogle, linkWithApple,
     updateEmailPassword, getLinkedProviders, hasEmailPassword,
   } = useAuth();
-  const { tier, refetch: refetchTier } = useSubscription();
+  const { tier, isTrial, trialEnd, refetch: refetchTier } = useSubscription();
   const [syncingSubscription, setSyncingSubscription] = useState(false);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
@@ -331,8 +331,15 @@ export default function Settings() {
     }
   };
 
-  const tierLabel = tier === 'free' ? 'Free' : tier === 'lifetime' ? 'Lifetime' : tier.charAt(0).toUpperCase() + tier.slice(1);
-  const tierDescription = tier === 'free' ? 'Basic portfolio tracking' : tier === 'lifetime' ? 'Lifetime access to all features' : `${tierLabel} member`;
+  const tierLabel = tier === 'free' ? 'Free' : tier === 'lifetime' ? 'Lifetime' : isTrial ? 'Gold Trial' : 'Gold';
+  const trialDaysLeft = trialEnd ? Math.max(0, Math.ceil((new Date(trialEnd).getTime() - Date.now()) / (1000 * 60 * 60 * 24))) : 0;
+  const tierDescription = tier === 'free'
+    ? 'Basic portfolio tracking'
+    : tier === 'lifetime'
+    ? 'Lifetime access to all features'
+    : isTrial
+    ? `${trialDaysLeft} day${trialDaysLeft === 1 ? '' : 's'} remaining in trial`
+    : 'Gold member';
 
   const inputClass = "w-full px-3 py-2.5 rounded-lg bg-background border border-border focus:border-gold/50 focus:outline-none text-sm";
 
@@ -487,7 +494,7 @@ export default function Settings() {
                 <p className="text-xs text-text-muted">{tierDescription}</p>
               </div>
               <span className={`px-3 py-1 text-xs font-medium rounded-full ${
-                tier === 'free' ? 'bg-gold/10 text-gold' : 'bg-green/10 text-green'
+                tier === 'free' ? 'bg-gold/10 text-gold' : isTrial ? 'bg-gold/10 text-gold' : 'bg-green/10 text-green'
               }`}>
                 {tierLabel}
               </span>
@@ -502,7 +509,7 @@ export default function Settings() {
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z" />
                 </svg>
-                <span className="text-sm">Upgrade Plan</span>
+                <span className="text-sm">Try Gold Free for 7 Days</span>
               </button>
             </div>
           )}

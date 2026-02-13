@@ -12,6 +12,9 @@ import type { SpotPriceHistoryPoint } from '../services/api';
 import { formatCurrency, formatWeight } from '../utils/format';
 import { METAL_COLORS, METAL_LABELS, METALS } from '../utils/constants';
 import { CardSkeleton, ChartSkeleton } from '../components/Skeleton';
+import { BlurredContent } from '../components/BlurredContent';
+import { useSubscription } from '../hooks/useSubscription';
+import { PricingModal } from '../components/PricingModal';
 import type { Metal } from '../types/holding';
 
 // Map UI range buttons to backend API range parameter
@@ -294,6 +297,8 @@ function StatCard({ label, value, subtext, color }: {
 export default function Analytics() {
   const { holdings, getTotalsByMetal, loading } = useHoldings();
   const { prices, loading: pricesLoading } = useSpotPrices(60000);
+  const { isGold, tier } = useSubscription();
+  const [showPricing, setShowPricing] = useState(false);
   const [selectedRange, setSelectedRange] = useState<typeof TIME_RANGES[number]>('1M');
   const [priceHistory, setPriceHistory] = useState<SpotPriceHistoryPoint[]>([]);
 
@@ -526,35 +531,50 @@ export default function Analytics() {
     <div className="max-w-6xl mx-auto p-4 md:p-6 lg:p-8">
       <h1 className="text-2xl font-bold tracking-tight mb-6">Analytics</h1>
 
+      {/* Gold upgrade banner */}
+      {!isGold && (
+        <button
+          onClick={() => setShowPricing(true)}
+          className="w-full mb-6 p-3.5 rounded-xl border border-gold/30 bg-gold/5 flex items-center justify-center gap-2 hover:bg-gold/10 transition-colors"
+        >
+          <svg className="w-4 h-4 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z" />
+          </svg>
+          <span className="text-sm font-medium text-gold">Unlock Full Analytics — Try Gold Free for 7 Days</span>
+        </button>
+      )}
+
       <motion.div variants={container} initial="hidden" animate="show" className="space-y-6">
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <StatCard
-            label="Avg Gold Cost/oz"
-            value={stats.avgGoldCostPerOz > 0 ? formatCurrency(stats.avgGoldCostPerOz) : '--'}
-            subtext={stats.avgGoldCostPerOz > 0 ? `Spot: ${formatCurrency(getSpotPrice('gold'))}` : 'No gold holdings'}
-            color="text-gold"
-          />
-          <StatCard
-            label="Avg Silver Cost/oz"
-            value={stats.avgSilverCostPerOz > 0 ? formatCurrency(stats.avgSilverCostPerOz) : '--'}
-            subtext={stats.avgSilverCostPerOz > 0 ? `Spot: ${formatCurrency(getSpotPrice('silver'))}` : 'No silver holdings'}
-            color="text-[#C0C0C0]"
-          />
-          <StatCard
-            label="Gold/Silver Ratio"
-            value={stats.marketGSR > 0 ? stats.marketGSR.toFixed(1) : '--'}
-            subtext={stats.holdingsGSR > 0 ? `Your ratio: ${stats.holdingsGSR.toFixed(1)}:1` : 'Market ratio'}
-          />
-          <StatCard
-            label="Total Holdings"
-            value={`${holdings.length}`}
-            subtext={stats.totalOzByMetal.map((m) =>
-              `${formatWeight(m.oz)} ${METAL_LABELS[m.metal]}`
-            ).join(', ')}
-          />
-        </div>
+        <BlurredContent show={isGold} upgradeText="">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <StatCard
+              label="Avg Gold Cost/oz"
+              value={stats.avgGoldCostPerOz > 0 ? formatCurrency(stats.avgGoldCostPerOz) : '--'}
+              subtext={stats.avgGoldCostPerOz > 0 ? `Spot: ${formatCurrency(getSpotPrice('gold'))}` : 'No gold holdings'}
+              color="text-gold"
+            />
+            <StatCard
+              label="Avg Silver Cost/oz"
+              value={stats.avgSilverCostPerOz > 0 ? formatCurrency(stats.avgSilverCostPerOz) : '--'}
+              subtext={stats.avgSilverCostPerOz > 0 ? `Spot: ${formatCurrency(getSpotPrice('silver'))}` : 'No silver holdings'}
+              color="text-[#C0C0C0]"
+            />
+            <StatCard
+              label="Gold/Silver Ratio"
+              value={stats.marketGSR > 0 ? stats.marketGSR.toFixed(1) : '--'}
+              subtext={stats.holdingsGSR > 0 ? `Your ratio: ${stats.holdingsGSR.toFixed(1)}:1` : 'Market ratio'}
+            />
+            <StatCard
+              label="Total Holdings"
+              value={`${holdings.length}`}
+              subtext={stats.totalOzByMetal.map((m) =>
+                `${formatWeight(m.oz)} ${METAL_LABELS[m.metal]}`
+              ).join(', ')}
+            />
+          </div>
+        </BlurredContent>
 
         {/* Portfolio Value Chart */}
         <motion.div variants={item} className="rounded-xl bg-surface border border-border p-5">
@@ -576,100 +596,23 @@ export default function Analytics() {
               ))}
             </div>
           </div>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={portfolioHistory}>
-                <defs>
-                  <linearGradient id="portfolioGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#D4A843" stopOpacity={0.25} />
-                    <stop offset="100%" stopColor="#D4A843" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-chart-grid)" />
-                <XAxis
-                  dataKey="date"
-                  tick={{ fill: 'var(--color-chart-label)', fontSize: 11 }}
-                  axisLine={{ stroke: 'var(--color-chart-grid)' }}
-                  tickLine={false}
-                  interval="preserveStartEnd"
-                />
-                <YAxis
-                  tick={{ fill: 'var(--color-chart-label)', fontSize: 11 }}
-                  axisLine={false}
-                  tickLine={false}
-                  tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`}
-                  width={50}
-                />
-                <Tooltip
-                  formatter={(value) => [formatCurrency(Number(value)), 'Value']}
-                  {...tooltipStyle}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="value"
-                  stroke="#D4A843"
-                  strokeWidth={2}
-                  fill="url(#portfolioGradient)"
-                  dot={false}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </motion.div>
-
-        {/* Allocation Pie + Cost vs Value Bar */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Pie Chart */}
-          <motion.div variants={item} className="rounded-xl bg-surface border border-border p-5">
-            <h2 className="text-sm font-semibold mb-4">Allocation by Metal</h2>
-            <div className="h-56">
+          <BlurredContent show={isGold} upgradeText="">
+            <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={stats.allocation}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={55}
-                    outerRadius={85}
-                    paddingAngle={3}
-                    dataKey="value"
-                    strokeWidth={0}
-                  >
-                    {stats.allocation.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    formatter={(value) => formatCurrency(Number(value))}
-                    {...tooltipStyle}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="flex flex-wrap justify-center gap-4 mt-2">
-              {stats.allocation.map((entry) => (
-                <div key={entry.name} className="flex items-center gap-2">
-                  <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: entry.color }} />
-                  <span className="text-xs text-text-muted">
-                    {entry.name} {entry.percentage.toFixed(0)}%
-                  </span>
-                </div>
-              ))}
-            </div>
-          </motion.div>
-
-          {/* Cost vs Value Bar Chart */}
-          <motion.div variants={item} className="rounded-xl bg-surface border border-border p-5">
-            <h2 className="text-sm font-semibold mb-4">Cost Basis vs Current Value</h2>
-            <div className="h-56">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={stats.costVsValue} barGap={2}>
+                <AreaChart data={portfolioHistory}>
+                  <defs>
+                    <linearGradient id="portfolioGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#D4A843" stopOpacity={0.25} />
+                      <stop offset="100%" stopColor="#D4A843" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--color-chart-grid)" />
                   <XAxis
-                    dataKey="name"
+                    dataKey="date"
                     tick={{ fill: 'var(--color-chart-label)', fontSize: 11 }}
                     axisLine={{ stroke: 'var(--color-chart-grid)' }}
                     tickLine={false}
+                    interval="preserveStartEnd"
                   />
                   <YAxis
                     tick={{ fill: 'var(--color-chart-label)', fontSize: 11 }}
@@ -679,82 +622,169 @@ export default function Analytics() {
                     width={50}
                   />
                   <Tooltip
-                    formatter={(value, name) => [formatCurrency(Number(value)), name === 'cost' ? 'Cost Basis' : 'Current Value']}
+                    formatter={(value) => [formatCurrency(Number(value)), 'Value']}
                     {...tooltipStyle}
                   />
-                  <Bar dataKey="cost" fill="var(--color-text-muted)" radius={[4, 4, 0, 0]} name="Cost Basis" />
-                  <Bar dataKey="value" fill="#D4A843" radius={[4, 4, 0, 0]} name="Current Value" />
-                </BarChart>
+                  <Area
+                    type="monotone"
+                    dataKey="value"
+                    stroke="#D4A843"
+                    strokeWidth={2}
+                    fill="url(#portfolioGradient)"
+                    dot={false}
+                  />
+                </AreaChart>
               </ResponsiveContainer>
             </div>
-            <div className="flex justify-center gap-6 mt-2">
-              <div className="flex items-center gap-2">
-                <div className="w-2.5 h-2.5 rounded-sm bg-text-muted" />
-                <span className="text-xs text-text-muted">Cost Basis</span>
+          </BlurredContent>
+        </motion.div>
+
+        {/* Allocation Pie + Cost vs Value Bar */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Pie Chart */}
+          <motion.div variants={item} className="rounded-xl bg-surface border border-border p-5">
+            <h2 className="text-sm font-semibold mb-4">Allocation by Metal</h2>
+            <BlurredContent show={isGold} upgradeText="">
+              <div className="h-56">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={stats.allocation}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={55}
+                      outerRadius={85}
+                      paddingAngle={3}
+                      dataKey="value"
+                      strokeWidth={0}
+                    >
+                      {stats.allocation.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      formatter={(value) => formatCurrency(Number(value))}
+                      {...tooltipStyle}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="w-2.5 h-2.5 rounded-sm bg-gold" />
-                <span className="text-xs text-text-muted">Current Value</span>
+              <div className="flex flex-wrap justify-center gap-4 mt-2">
+                {stats.allocation.map((entry) => (
+                  <div key={entry.name} className="flex items-center gap-2">
+                    <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: entry.color }} />
+                    <span className="text-xs text-text-muted">
+                      {entry.name} {entry.percentage.toFixed(0)}%
+                    </span>
+                  </div>
+                ))}
               </div>
-            </div>
+            </BlurredContent>
+          </motion.div>
+
+          {/* Cost vs Value Bar Chart */}
+          <motion.div variants={item} className="rounded-xl bg-surface border border-border p-5">
+            <h2 className="text-sm font-semibold mb-4">Cost Basis vs Current Value</h2>
+            <BlurredContent show={isGold} upgradeText="">
+              <div className="h-56">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={stats.costVsValue} barGap={2}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--color-chart-grid)" />
+                    <XAxis
+                      dataKey="name"
+                      tick={{ fill: 'var(--color-chart-label)', fontSize: 11 }}
+                      axisLine={{ stroke: 'var(--color-chart-grid)' }}
+                      tickLine={false}
+                    />
+                    <YAxis
+                      tick={{ fill: 'var(--color-chart-label)', fontSize: 11 }}
+                      axisLine={false}
+                      tickLine={false}
+                      tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`}
+                      width={50}
+                    />
+                    <Tooltip
+                      formatter={(value, name) => [formatCurrency(Number(value)), name === 'cost' ? 'Cost Basis' : 'Current Value']}
+                      {...tooltipStyle}
+                    />
+                    <Bar dataKey="cost" fill="var(--color-text-muted)" radius={[4, 4, 0, 0]} name="Cost Basis" />
+                    <Bar dataKey="value" fill="#D4A843" radius={[4, 4, 0, 0]} name="Current Value" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="flex justify-center gap-6 mt-2">
+                <div className="flex items-center gap-2">
+                  <div className="w-2.5 h-2.5 rounded-sm bg-text-muted" />
+                  <span className="text-xs text-text-muted">Cost Basis</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-2.5 h-2.5 rounded-sm bg-gold" />
+                  <span className="text-xs text-text-muted">Current Value</span>
+                </div>
+              </div>
+            </BlurredContent>
           </motion.div>
         </div>
 
         {/* Best/Worst Purchases */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {stats.bestPurchase && (
-            <motion.div variants={item} className="rounded-xl bg-surface border border-border p-5">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-6 h-6 rounded-full bg-green/10 flex items-center justify-center">
-                  <svg className="w-3.5 h-3.5 text-green" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 10.5L12 3m0 0l7.5 7.5M12 3v18" />
-                  </svg>
+        <BlurredContent show={isGold} upgradeText="">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {stats.bestPurchase && (
+              <motion.div variants={item} className="rounded-xl bg-surface border border-border p-5">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-6 h-6 rounded-full bg-green/10 flex items-center justify-center">
+                    <svg className="w-3.5 h-3.5 text-green" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 10.5L12 3m0 0l7.5 7.5M12 3v18" />
+                    </svg>
+                  </div>
+                  <h2 className="text-sm font-semibold">Best Purchase (by Premium)</h2>
                 </div>
-                <h2 className="text-sm font-semibold">Best Purchase (by Premium)</h2>
-              </div>
-              <p className="text-text font-medium">{stats.bestPurchase.type}</p>
-              <p className="text-xs text-text-muted capitalize">{stats.bestPurchase.metal}</p>
-              <p className={`text-sm font-semibold mt-1 ${stats.bestPurchase.premium <= 0 ? 'text-green' : 'text-gold'}`}>
-                {stats.bestPurchase.premium > 0 ? '+' : ''}{stats.bestPurchase.premium.toFixed(1)}% over spot
-              </p>
-            </motion.div>
-          )}
-          {stats.worstPurchase && (
-            <motion.div variants={item} className="rounded-xl bg-surface border border-border p-5">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-6 h-6 rounded-full bg-red/10 flex items-center justify-center">
-                  <svg className="w-3.5 h-3.5 text-red" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 13.5L12 21m0 0l-7.5-7.5M12 21V3" />
-                  </svg>
+                <p className="text-text font-medium">{stats.bestPurchase.type}</p>
+                <p className="text-xs text-text-muted capitalize">{stats.bestPurchase.metal}</p>
+                <p className={`text-sm font-semibold mt-1 ${stats.bestPurchase.premium <= 0 ? 'text-green' : 'text-gold'}`}>
+                  {stats.bestPurchase.premium > 0 ? '+' : ''}{stats.bestPurchase.premium.toFixed(1)}% over spot
+                </p>
+              </motion.div>
+            )}
+            {stats.worstPurchase && (
+              <motion.div variants={item} className="rounded-xl bg-surface border border-border p-5">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-6 h-6 rounded-full bg-red/10 flex items-center justify-center">
+                    <svg className="w-3.5 h-3.5 text-red" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 13.5L12 21m0 0l-7.5-7.5M12 21V3" />
+                    </svg>
+                  </div>
+                  <h2 className="text-sm font-semibold">Highest Premium Purchase</h2>
                 </div>
-                <h2 className="text-sm font-semibold">Highest Premium Purchase</h2>
-              </div>
-              <p className="text-text font-medium">{stats.worstPurchase.type}</p>
-              <p className="text-xs text-text-muted capitalize">{stats.worstPurchase.metal}</p>
-              <p className="text-sm font-semibold mt-1 text-red">
-                +{stats.worstPurchase.premium.toFixed(1)}% over spot
-              </p>
-            </motion.div>
-          )}
-        </div>
+                <p className="text-text font-medium">{stats.worstPurchase.type}</p>
+                <p className="text-xs text-text-muted capitalize">{stats.worstPurchase.metal}</p>
+                <p className="text-sm font-semibold mt-1 text-red">
+                  +{stats.worstPurchase.premium.toFixed(1)}% over spot
+                </p>
+              </motion.div>
+            )}
+          </div>
+        </BlurredContent>
 
         {/* Total Oz by Metal */}
         <motion.div variants={item}>
           <h2 className="text-sm font-medium text-text-muted uppercase tracking-wider mb-3">Total Ounces by Metal</h2>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            {stats.totalOzByMetal.map((m) => (
-              <div
-                key={m.metal}
-                className="p-4 rounded-xl border border-border"
-                style={{ backgroundColor: `${METAL_COLORS[m.metal]}08` }}
-              >
-                <p className="text-xs font-semibold mb-1" style={{ color: METAL_COLORS[m.metal] }}>
-                  {METAL_LABELS[m.metal]}
-                </p>
-                <p className="text-lg font-bold">{formatWeight(m.oz)}</p>
-              </div>
-            ))}
-          </div>
+          <BlurredContent show={isGold} upgradeText="">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              {stats.totalOzByMetal.map((m) => (
+                <div
+                  key={m.metal}
+                  className="p-4 rounded-xl border border-border"
+                  style={{ backgroundColor: `${METAL_COLORS[m.metal]}08` }}
+                >
+                  <p className="text-xs font-semibold mb-1" style={{ color: METAL_COLORS[m.metal] }}>
+                    {METAL_LABELS[m.metal]}
+                  </p>
+                  <p className="text-lg font-bold">{formatWeight(m.oz)}</p>
+                </div>
+              ))}
+            </div>
+          </BlurredContent>
         </motion.div>
 
         {/* Spot Price History */}
@@ -767,6 +797,12 @@ export default function Analytics() {
           </div>
         </motion.div>
       </motion.div>
+
+      <PricingModal
+        isOpen={showPricing}
+        onClose={() => setShowPricing(false)}
+        currentTier={tier}
+      />
     </div>
   );
 }

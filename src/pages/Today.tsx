@@ -9,7 +9,7 @@ import type { PriceLogEntry, IntelligenceBrief, VaultDataPoint } from '../servic
 import { formatCurrency, formatPercent, formatChange } from '../utils/format';
 import { METAL_COLORS, METAL_LABELS, METALS } from '../utils/constants';
 import { CardSkeleton } from '../components/Skeleton';
-import { GatedContent } from '../components/GatedContent';
+import { BlurredContent } from '../components/BlurredContent';
 import { AdvisorChat } from '../components/AdvisorChat';
 import type { Metal } from '../types/holding';
 
@@ -71,7 +71,6 @@ function MiniSparkline({ data, color, id, label }: {
   const dataMax = Math.max(...values);
   const range = dataMax - dataMin;
   const mean = (dataMin + dataMax) / 2;
-  // If range < 0.5% of price, force 0.5% range centered on mean
   const minRange = mean * 0.005;
   const effectiveRange = Math.max(range, minRange);
   const padding = effectiveRange * 0.1;
@@ -138,7 +137,6 @@ function PortfolioSparkline({ data, color, sparklineRaw }: {
   if (data.length < 2) return null;
   const gradId = 'portfolio-spark-fill';
 
-  // Build data with timestamps for tooltips
   const chartData = useMemo(() => {
     return data.map((d, i) => ({
       v: d.v,
@@ -146,13 +144,11 @@ function PortfolioSparkline({ data, color, sparklineRaw }: {
     }));
   }, [data, sparklineRaw]);
 
-  // Tight Y-axis domain: show actual portfolio volatility
   const values = chartData.map((d) => d.v).filter((v) => v > 0);
   const dataMin = Math.min(...values);
   const dataMax = Math.max(...values);
   const range = dataMax - dataMin;
   const mean = (dataMin + dataMax) / 2;
-  // If range < 1% of portfolio value, force 1% range centered on mean
   const minRange = mean * 0.01;
   const effectiveRange = Math.max(range, minRange);
   const padding = effectiveRange * 0.1;
@@ -281,10 +277,12 @@ function VaultWatchPanel({
   vaultData,
   selectedMetal,
   onSelectMetal,
+  isGold,
 }: {
   vaultData: Record<Metal, VaultDataPoint[]> | null;
   selectedMetal: Metal;
   onSelectMetal: (m: Metal) => void;
+  isGold: boolean;
 }) {
   const metalData = vaultData?.[selectedMetal] || [];
   const latest = metalData.length > 0 ? metalData[metalData.length - 1] : null;
@@ -302,7 +300,7 @@ function VaultWatchPanel({
   };
 
   const chartData = metalData.map((d) => ({
-    date: d.date.slice(5), // MM-DD
+    date: d.date.slice(5),
     registered: d.registered_oz,
     eligible: d.eligible_oz,
   }));
@@ -311,7 +309,7 @@ function VaultWatchPanel({
 
   return (
     <div>
-      {/* Metal Tabs */}
+      {/* Metal Tabs — always visible */}
       <div className="flex gap-1 mb-4">
         {vaultMetals.map((m) => (
           <button
@@ -334,60 +332,67 @@ function VaultWatchPanel({
         </div>
       ) : latest ? (
         <>
-          {/* Stats Grid */}
+          {/* Registered — always visible */}
           <div className="grid grid-cols-2 gap-3 mb-4">
             <div className="bg-surface-alt rounded-lg p-3">
               <p className="text-[10px] text-text-muted uppercase tracking-wider mb-1">Registered</p>
               <p className="text-sm font-bold">{formatMOz(latest.registered_oz)} oz</p>
             </div>
-            <div className="bg-surface-alt rounded-lg p-3">
-              <p className="text-[10px] text-text-muted uppercase tracking-wider mb-1">Eligible</p>
-              <p className="text-sm font-bold">{formatMOz(latest.eligible_oz)} oz</p>
-            </div>
-            <div className="bg-surface-alt rounded-lg p-3">
-              <p className="text-[10px] text-text-muted uppercase tracking-wider mb-1">Combined</p>
-              <p className="text-sm font-bold">{formatMOz(latest.combined_oz)} oz</p>
-            </div>
-            <div className="bg-surface-alt rounded-lg p-3">
-              <p className="text-[10px] text-text-muted uppercase tracking-wider mb-1">Ratio</p>
-              <p className="text-sm font-bold" style={{ color: ratioColor(latest.oversubscribed_ratio).color }}>
-                {latest.oversubscribed_ratio.toFixed(2)}x{' '}
-                <span className="text-[10px] font-normal">{ratioColor(latest.oversubscribed_ratio).label}</span>
-              </p>
-            </div>
+            {/* Eligible, Combined, Ratio — blurred for free */}
+            <BlurredContent upgradeText="Full vault data with Gold" show={isGold}>
+              <div className="bg-surface-alt rounded-lg p-3">
+                <p className="text-[10px] text-text-muted uppercase tracking-wider mb-1">Eligible</p>
+                <p className="text-sm font-bold">{formatMOz(latest.eligible_oz)} oz</p>
+              </div>
+            </BlurredContent>
           </div>
-
-          {/* 30-Day Chart */}
-          {chartData.length >= 2 && (
-            <div className="h-36">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-chart-grid)" />
-                  <XAxis
-                    dataKey="date"
-                    tick={{ fill: 'var(--color-chart-label)', fontSize: 10 }}
-                    axisLine={false}
-                    tickLine={false}
-                    interval="preserveStartEnd"
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: 'var(--color-chart-bg)',
-                      border: '1px solid var(--color-chart-border)',
-                      borderRadius: '8px',
-                      fontSize: '12px',
-                    }}
-                    labelStyle={{ color: 'var(--color-text-secondary)' }}
-                    formatter={(value: number | undefined) =>
-                      value != null ? [formatMOz(value) + ' oz', ''] : ['--', '']
-                    }
-                  />
-                  <Line type="monotone" dataKey="registered" stroke="#D4A843" strokeWidth={1.5} dot={false} name="Registered" />
-                  <Line type="monotone" dataKey="eligible" stroke="#C0C0C0" strokeWidth={1.5} dot={false} name="Eligible" />
-                </LineChart>
-              </ResponsiveContainer>
+          <BlurredContent upgradeText="Full vault data with Gold" show={isGold}>
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              <div className="bg-surface-alt rounded-lg p-3">
+                <p className="text-[10px] text-text-muted uppercase tracking-wider mb-1">Combined</p>
+                <p className="text-sm font-bold">{formatMOz(latest.combined_oz)} oz</p>
+              </div>
+              <div className="bg-surface-alt rounded-lg p-3">
+                <p className="text-[10px] text-text-muted uppercase tracking-wider mb-1">Ratio</p>
+                <p className="text-sm font-bold" style={{ color: ratioColor(latest.oversubscribed_ratio).color }}>
+                  {latest.oversubscribed_ratio.toFixed(2)}x{' '}
+                  <span className="text-[10px] font-normal">{ratioColor(latest.oversubscribed_ratio).label}</span>
+                </p>
+              </div>
             </div>
-          )}
+
+            {/* 30-Day Chart */}
+            {chartData.length >= 2 && (
+              <div className="h-36">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={chartData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--color-chart-grid)" />
+                    <XAxis
+                      dataKey="date"
+                      tick={{ fill: 'var(--color-chart-label)', fontSize: 10 }}
+                      axisLine={false}
+                      tickLine={false}
+                      interval="preserveStartEnd"
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'var(--color-chart-bg)',
+                        border: '1px solid var(--color-chart-border)',
+                        borderRadius: '8px',
+                        fontSize: '12px',
+                      }}
+                      labelStyle={{ color: 'var(--color-text-secondary)' }}
+                      formatter={(value: number | undefined) =>
+                        value != null ? [formatMOz(value) + ' oz', ''] : ['--', '']
+                      }
+                    />
+                    <Line type="monotone" dataKey="registered" stroke="#D4A843" strokeWidth={1.5} dot={false} name="Registered" />
+                    <Line type="monotone" dataKey="eligible" stroke="#C0C0C0" strokeWidth={1.5} dot={false} name="Eligible" />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </BlurredContent>
         </>
       ) : null}
     </div>
@@ -402,12 +407,12 @@ export default function Today() {
   const { isGold } = useSubscription();
   const [sparklineRaw, setSparklineRaw] = useState<PriceLogEntry[]>([]);
 
-  // Intelligence state
+  // Intelligence state — always fetch for preview
   const [intelligence, setIntelligence] = useState<IntelligenceBrief[]>([]);
   const [intelligenceLoading, setIntelligenceLoading] = useState(false);
   const [expandedBriefId, setExpandedBriefId] = useState<string | null>(null);
 
-  // Vault state
+  // Vault state — always fetch for preview
   const [vaultData, setVaultData] = useState<Record<Metal, VaultDataPoint[]> | null>(null);
   const [vaultLoading, setVaultLoading] = useState(false);
   const [selectedVaultMetal, setSelectedVaultMetal] = useState<Metal>('gold');
@@ -417,9 +422,8 @@ export default function Today() {
     fetchSparklineData().then(setSparklineRaw).catch(console.error);
   }, []);
 
-  // Fetch intelligence (gold+ only, auto-refresh every 5 min)
+  // Fetch intelligence (always, for preview)
   const loadIntelligence = useCallback(async () => {
-    if (!isGold) return;
     setIntelligenceLoading(true);
     try {
       const res = await fetchIntelligence();
@@ -429,24 +433,22 @@ export default function Today() {
     } finally {
       setIntelligenceLoading(false);
     }
-  }, [isGold]);
+  }, []);
 
   useEffect(() => {
     loadIntelligence();
-    if (!isGold) return;
     const interval = setInterval(loadIntelligence, 5 * 60 * 1000);
     return () => clearInterval(interval);
-  }, [loadIntelligence, isGold]);
+  }, [loadIntelligence]);
 
-  // Fetch vault data (gold+ only)
+  // Fetch vault data (always, for preview)
   useEffect(() => {
-    if (!isGold) return;
     setVaultLoading(true);
     fetchVaultData('comex', 30)
       .then((res) => setVaultData(res.data))
       .catch((e) => console.error('Failed to fetch vault data:', e))
       .finally(() => setVaultLoading(false));
-  }, [isGold]);
+  }, []);
 
   // Build per-metal sparkline data with timestamps
   const sparklines = useMemo(() => {
@@ -670,52 +672,90 @@ export default function Today() {
           {/* LEFT COLUMN */}
           <div className="space-y-6">
 
-            {/* What Changed Today (GOLD) */}
+            {/* What Changed Today — first row free, rest blurred */}
             {stats && stats.metalImpacts.length > 0 && (
               <motion.div variants={item}>
                 <h2 className="text-sm font-medium text-text-muted uppercase tracking-wider mb-0.5">What Changed Today</h2>
                 <p className="text-[11px] text-text-muted mb-3">How today's price moves affected your holdings</p>
-                <GatedContent requiredTier="gold" featureName="What Changed Today">
-                  <div className="rounded-xl bg-surface border border-border divide-y divide-border">
-                    {stats.metalImpacts.map((metal) => {
-                      const isPositive = metal.dailyImpact >= 0;
-                      return (
-                        <div
-                          key={metal.metal}
-                          className="flex items-center justify-between px-5 py-4"
-                        >
-                          <div className="flex items-center gap-3">
-                            <div
-                              className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold"
-                              style={{
-                                backgroundColor: `${METAL_COLORS[metal.metal]}15`,
-                                color: METAL_COLORS[metal.metal],
-                              }}
-                            >
-                              {METAL_LABELS[metal.metal].slice(0, 2)}
-                            </div>
-                            <div>
-                              <p className="text-sm font-medium">{METAL_LABELS[metal.metal]}</p>
-                              <p className="text-xs text-text-muted">{metal.totalOz.toFixed(3)} oz</p>
-                            </div>
+                <div className="rounded-xl bg-surface border border-border divide-y divide-border">
+                  {stats.metalImpacts.map((metal, idx) => {
+                    const isPositive = metal.dailyImpact >= 0;
+                    const row = (
+                      <div
+                        key={metal.metal}
+                        className="flex items-center justify-between px-5 py-4"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div
+                            className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold"
+                            style={{
+                              backgroundColor: `${METAL_COLORS[metal.metal]}15`,
+                              color: METAL_COLORS[metal.metal],
+                            }}
+                          >
+                            {METAL_LABELS[metal.metal].slice(0, 2)}
                           </div>
-                          <div className="text-right">
-                            <p className={`text-sm font-semibold ${isPositive ? 'text-green' : 'text-red'}`}>
-                              {formatChange(metal.dailyImpact)}
-                            </p>
-                            <p className={`text-xs ${isPositive ? 'text-green/70' : 'text-red/70'}`}>
-                              {formatPercent(metal.changePercent)}
-                            </p>
+                          <div>
+                            <p className="text-sm font-medium">{METAL_LABELS[metal.metal]}</p>
+                            <p className="text-xs text-text-muted">{metal.totalOz.toFixed(3)} oz</p>
                           </div>
                         </div>
-                      );
-                    })}
-                  </div>
-                </GatedContent>
+                        <div className="text-right">
+                          <p className={`text-sm font-semibold ${isPositive ? 'text-green' : 'text-red'}`}>
+                            {formatChange(metal.dailyImpact)}
+                          </p>
+                          <p className={`text-xs ${isPositive ? 'text-green/70' : 'text-red/70'}`}>
+                            {formatPercent(metal.changePercent)}
+                          </p>
+                        </div>
+                      </div>
+                    );
+
+                    // First row always visible; rest blurred for free
+                    if (idx === 0 || isGold) return row;
+                    return null;
+                  })}
+                </div>
+                {!isGold && stats.metalImpacts.length > 1 && (
+                  <BlurredContent upgradeText="See all metals — Try Gold Free for 7 Days">
+                    <div className="rounded-b-xl bg-surface border border-t-0 border-border divide-y divide-border">
+                      {stats.metalImpacts.slice(1).map((metal) => {
+                        const isPositive = metal.dailyImpact >= 0;
+                        return (
+                          <div key={metal.metal} className="flex items-center justify-between px-5 py-4">
+                            <div className="flex items-center gap-3">
+                              <div
+                                className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold"
+                                style={{
+                                  backgroundColor: `${METAL_COLORS[metal.metal]}15`,
+                                  color: METAL_COLORS[metal.metal],
+                                }}
+                              >
+                                {METAL_LABELS[metal.metal].slice(0, 2)}
+                              </div>
+                              <div>
+                                <p className="text-sm font-medium">{METAL_LABELS[metal.metal]}</p>
+                                <p className="text-xs text-text-muted">{metal.totalOz.toFixed(3)} oz</p>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <p className={`text-sm font-semibold ${isPositive ? 'text-green' : 'text-red'}`}>
+                                {formatChange(metal.dailyImpact)}
+                              </p>
+                              <p className={`text-xs ${isPositive ? 'text-green/70' : 'text-red/70'}`}>
+                                {formatPercent(metal.changePercent)}
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </BlurredContent>
+                )}
               </motion.div>
             )}
 
-            {/* Intelligence Feed (GOLD) */}
+            {/* Intelligence Feed — first card free, rest blurred */}
             <motion.div variants={item}>
               <div className="flex items-center justify-between mb-3">
                 <div>
@@ -728,97 +768,128 @@ export default function Today() {
                   </span>
                 )}
               </div>
-              <GatedContent requiredTier="gold" featureName="Intelligence Feed">
-                {intelligenceLoading ? (
-                  <div className="space-y-3">
-                    <CardSkeleton />
-                    <CardSkeleton />
-                  </div>
-                ) : intelligence.length > 0 ? (
-                  <motion.div
-                    variants={container}
-                    initial="hidden"
-                    animate="show"
-                    className="space-y-3"
-                  >
-                    {intelligence.map((brief) => (
-                      <motion.div key={brief.id} variants={item}>
-                        <IntelligenceBriefCard
-                          brief={brief}
-                          expanded={expandedBriefId === brief.id}
-                          onToggle={() =>
-                            setExpandedBriefId((prev) => (prev === brief.id ? null : brief.id))
-                          }
-                        />
+              {intelligenceLoading ? (
+                <div className="space-y-3">
+                  <CardSkeleton />
+                  <CardSkeleton />
+                </div>
+              ) : intelligence.length > 0 ? (
+                <div className="space-y-3">
+                  {/* First card always visible */}
+                  <IntelligenceBriefCard
+                    brief={intelligence[0]}
+                    expanded={expandedBriefId === intelligence[0].id}
+                    onToggle={() =>
+                      setExpandedBriefId((prev) => (prev === intelligence[0].id ? null : intelligence[0].id))
+                    }
+                  />
+                  {/* Rest: visible for Gold, blurred for free */}
+                  {intelligence.length > 1 && (
+                    isGold ? (
+                      <motion.div
+                        variants={container}
+                        initial="hidden"
+                        animate="show"
+                        className="space-y-3"
+                      >
+                        {intelligence.slice(1).map((brief) => (
+                          <motion.div key={brief.id} variants={item}>
+                            <IntelligenceBriefCard
+                              brief={brief}
+                              expanded={expandedBriefId === brief.id}
+                              onToggle={() =>
+                                setExpandedBriefId((prev) => (prev === brief.id ? null : brief.id))
+                              }
+                            />
+                          </motion.div>
+                        ))}
                       </motion.div>
-                    ))}
-                  </motion.div>
-                ) : (
-                  <div className="rounded-xl bg-surface border border-border p-8 text-center">
-                    <div className="w-10 h-10 mx-auto rounded-full bg-gold/10 flex items-center justify-center mb-3">
-                      <svg className="w-5 h-5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 7.5h1.5m-1.5 3h1.5m-7.5 3h7.5m-7.5 3h7.5m3-9h3.375c.621 0 1.125.504 1.125 1.125V18a2.25 2.25 0 01-2.25 2.25M16.5 7.5V18a2.25 2.25 0 002.25 2.25M16.5 7.5V4.875c0-.621-.504-1.125-1.125-1.125H4.125C3.504 3.75 3 4.254 3 4.875V18a2.25 2.25 0 002.25 2.25h13.5M6 7.5h3v3H6v-3z" />
-                      </svg>
-                    </div>
-                    <p className="text-sm font-medium text-text-secondary">No briefs yet</p>
-                    <p className="text-xs text-text-muted mt-1">Intelligence briefing generates at 6:30 AM EST</p>
+                    ) : (
+                      <BlurredContent upgradeText={`${intelligence.length - 1} more brief${intelligence.length - 1 !== 1 ? 's' : ''} today — Try Gold Free for 7 Days`}>
+                        <div className="space-y-3">
+                          {intelligence.slice(1, 3).map((brief) => (
+                            <IntelligenceBriefCard
+                              key={brief.id}
+                              brief={brief}
+                              expanded={false}
+                              onToggle={() => {}}
+                            />
+                          ))}
+                        </div>
+                      </BlurredContent>
+                    )
+                  )}
+                </div>
+              ) : (
+                <div className="rounded-xl bg-surface border border-border p-8 text-center">
+                  <div className="w-10 h-10 mx-auto rounded-full bg-gold/10 flex items-center justify-center mb-3">
+                    <svg className="w-5 h-5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 7.5h1.5m-1.5 3h1.5m-7.5 3h7.5m-7.5 3h7.5m3-9h3.375c.621 0 1.125.504 1.125 1.125V18a2.25 2.25 0 01-2.25 2.25M16.5 7.5V18a2.25 2.25 0 002.25 2.25M16.5 7.5V4.875c0-.621-.504-1.125-1.125-1.125H4.125C3.504 3.75 3 4.254 3 4.875V18a2.25 2.25 0 002.25 2.25h13.5M6 7.5h3v3H6v-3z" />
+                    </svg>
                   </div>
-                )}
-              </GatedContent>
+                  <p className="text-sm font-medium text-text-secondary">No briefs yet</p>
+                  <p className="text-xs text-text-muted mt-1">Intelligence briefing generates at 6:30 AM EST</p>
+                </div>
+              )}
             </motion.div>
           </div>
 
           {/* RIGHT COLUMN */}
           <div className="space-y-6">
 
-            {/* Vault Watch (GOLD) */}
+            {/* Vault Watch — header + registered free, rest blurred */}
             <motion.div variants={item}>
               <h2 className="text-sm font-medium text-text-muted uppercase tracking-wider mb-0.5">Vault Watch</h2>
               <p className="text-[11px] text-text-muted mb-3">COMEX warehouse inventory — physical metal backing futures contracts</p>
-              <GatedContent requiredTier="gold" featureName="Vault Watch">
-                <div className="rounded-xl bg-surface border border-border p-4">
-                  {vaultLoading ? (
-                    <CardSkeleton />
-                  ) : (
-                    <VaultWatchPanel
-                      vaultData={vaultData}
-                      selectedMetal={selectedVaultMetal}
-                      onSelectMetal={setSelectedVaultMetal}
-                    />
-                  )}
-                </div>
-              </GatedContent>
+              <div className="rounded-xl bg-surface border border-border p-4">
+                {vaultLoading ? (
+                  <CardSkeleton />
+                ) : (
+                  <VaultWatchPanel
+                    vaultData={vaultData}
+                    selectedMetal={selectedVaultMetal}
+                    onSelectMetal={setSelectedVaultMetal}
+                    isGold={isGold}
+                  />
+                )}
+              </div>
             </motion.div>
 
-            {/* AI Daily Brief (GOLD) — Placeholder */}
+            {/* AI Daily Brief — preview card with blurred content */}
             <motion.div variants={item}>
               <h2 className="text-sm font-medium text-text-muted uppercase tracking-wider mb-3">AI Daily Brief</h2>
-              <GatedContent requiredTier="gold" featureName="AI Daily Brief">
+              {isGold ? (
                 <div className="rounded-xl bg-surface border border-border p-6 text-center">
                   <div className="w-10 h-10 mx-auto rounded-full bg-gold/10 flex items-center justify-center mb-3">
                     <svg className="w-5 h-5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z" />
                     </svg>
                   </div>
                   <p className="text-sm font-medium text-text-secondary">AI-powered daily market analysis</p>
                   <p className="text-xs text-text-muted mt-1">Personalized to your stack composition</p>
                 </div>
-              </GatedContent>
+              ) : (
+                <BlurredContent upgradeText="Unlock personalized briefings">
+                  <div className="rounded-xl bg-surface border border-border p-4 space-y-2">
+                    <p className="text-xs font-semibold text-gold">Morning Brief — Feb 11</p>
+                    <p className="text-xs text-text-secondary leading-relaxed">Gold holds above $2,900 as markets digest inflation data. Silver futures rise on industrial demand outlook. COMEX registered inventories declined 2.3% this week, adding to the physical supply narrative...</p>
+                    <p className="text-xs text-text-muted">Your portfolio gained $342 today driven by gold's rally...</p>
+                  </div>
+                </BlurredContent>
+              )}
             </motion.div>
 
-            {/* AI Stack Advisor (GOLD) */}
+            {/* AI Stack Advisor — visible UI, gated on interaction */}
             <motion.div variants={item}>
               <h2 className="text-sm font-medium text-text-muted uppercase tracking-wider mb-1">AI Stack Advisor</h2>
               <p className="text-xs text-text-muted mb-3">Ask anything about your portfolio and the precious metals market</p>
-              <GatedContent requiredTier="gold" featureName="AI Stack Advisor">
-                <AdvisorChat />
-              </GatedContent>
+              <AdvisorChat />
             </motion.div>
 
-            {/* AI Deal Finder (GOLD) — Placeholder */}
+            {/* AI Deal Finder — preview card with blurred content */}
             <motion.div variants={item}>
               <h2 className="text-sm font-medium text-text-muted uppercase tracking-wider mb-3">AI Deal Finder</h2>
-              <GatedContent requiredTier="gold" featureName="AI Deal Finder">
+              {isGold ? (
                 <div className="rounded-xl bg-surface border border-border p-6 text-center">
                   <div className="w-10 h-10 mx-auto rounded-full bg-gold/10 flex items-center justify-center mb-3">
                     <svg className="w-5 h-5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
@@ -828,7 +899,24 @@ export default function Today() {
                   <p className="text-sm font-medium text-text-secondary">Best deals across dealers</p>
                   <p className="text-xs text-text-muted mt-1">Find the lowest premiums on metals you want</p>
                 </div>
-              </GatedContent>
+              ) : (
+                <BlurredContent upgradeText="Find the best bullion prices">
+                  <div className="rounded-xl bg-surface border border-border p-4 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-semibold">1 oz Gold Eagle</p>
+                      <p className="text-xs text-green font-medium">3.2% premium</p>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-semibold">1 oz Silver Maple</p>
+                      <p className="text-xs text-green font-medium">4.8% premium</p>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-semibold">10 oz Silver Bar</p>
+                      <p className="text-xs text-green font-medium">2.1% premium</p>
+                    </div>
+                  </div>
+                </BlurredContent>
+              )}
             </motion.div>
           </div>
         </div>

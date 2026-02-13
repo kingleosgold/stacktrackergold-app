@@ -110,7 +110,7 @@ export function PricingModal({ isOpen, onClose, currentTier }: PricingModalProps
                 </svg>
               </div>
               <h2 className="text-xl font-bold text-gold mb-1">Upgrade to Gold</h2>
-              <p className="text-sm text-text-muted">Unlock every feature in Stack Tracker</p>
+              <p className="text-sm text-text-muted">Full access to AI intelligence, analytics, and tools</p>
             </div>
 
             {/* Free plan note */}
@@ -204,14 +204,19 @@ export function PricingModal({ isOpen, onClose, currentTier }: PricingModalProps
                     ? 'Redirecting to checkout...'
                     : selected === 'lifetime'
                     ? `Get Lifetime Access — ${selectedOption.price}`
-                    : `Subscribe to Gold — ${selectedOption.price}${selectedOption.detail}`}
+                    : `Start 7-Day Free Trial — then ${selectedOption.price}${selectedOption.detail}`}
                 </button>
+                {selected !== 'lifetime' && (
+                  <p className="text-center text-xs text-text-muted mt-2">
+                    Cancel anytime during your trial. No charge until day 8.
+                  </p>
+                )}
               </>
             )}
 
             {/* Footer */}
             <p className="text-center text-xs text-text-muted mt-4">
-              {selected === 'lifetime' ? 'One-time payment. No recurring charges.' : 'Cancel anytime.'} Powered by Stripe.
+              {selected === 'lifetime' ? 'One-time payment. No recurring charges.' : '7-day free trial. Cancel anytime.'} Powered by Stripe.
             </p>
           </motion.div>
         </motion.div>
