@@ -68,10 +68,12 @@ export default function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showPricing, setShowPricing] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
 
-  // Close dropdown on click outside
+  // Close desktop dropdown on click outside
   useEffect(() => {
     if (!userMenuOpen) return;
     const handleClick = (e: MouseEvent) => {
@@ -83,9 +85,22 @@ export default function Layout() {
     return () => document.removeEventListener('mousedown', handleClick);
   }, [userMenuOpen]);
 
-  // Close dropdown on route change
+  // Close mobile dropdown on click outside
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    const handleClick = (e: MouseEvent) => {
+      if (mobileMenuRef.current && !mobileMenuRef.current.contains(e.target as Node)) {
+        setMobileMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [mobileMenuOpen]);
+
+  // Close all dropdowns on route change
   useEffect(() => {
     setUserMenuOpen(false);
+    setMobileMenuOpen(false);
   }, [location.pathname]);
 
   // Handle OAuth return with checkout intent (user lands on / after OAuth)
@@ -260,8 +275,108 @@ export default function Layout() {
         </div>
       </aside>
 
+      {/* Mobile Top Header */}
+      <header className="md:hidden fixed top-0 left-0 right-0 h-14 bg-sidebar/95 backdrop-blur-xl border-b border-border z-50 flex items-center justify-between px-4" ref={mobileMenuRef}>
+        <Link to="/" className="flex items-center gap-2">
+          <img src="/icon-512.png" alt="Stack Tracker Gold" className="w-8 h-8 rounded-lg" />
+          <span className="text-sm font-semibold text-gold tracking-tight">Stack Tracker</span>
+        </Link>
+
+        {isConfigured && user ? (
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="w-8 h-8 rounded-full bg-gold/15 flex items-center justify-center"
+          >
+            <span className="text-xs font-semibold text-gold">
+              {(user.email?.[0] || 'U').toUpperCase()}
+            </span>
+          </button>
+        ) : isConfigured ? (
+          <Link
+            to="/auth"
+            className="px-3.5 py-1.5 text-xs font-semibold text-gold border border-gold/30 rounded-lg hover:bg-gold/10 transition-colors"
+          >
+            Sign In
+          </Link>
+        ) : null}
+
+        {/* Mobile dropdown menu */}
+        <AnimatePresence>
+          {mobileMenuOpen && user && (
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.15 }}
+              className="absolute top-full right-3 mt-1.5 w-56 bg-surface border border-border rounded-lg shadow-xl overflow-hidden z-50"
+            >
+              {/* User info */}
+              <div className="px-3.5 py-3 border-b border-border">
+                <p className="text-xs font-medium text-text truncate">{user.user_metadata?.full_name || user.email}</p>
+                {user.user_metadata?.full_name && (
+                  <p className="text-[10px] text-text-muted truncate mt-0.5">{user.email}</p>
+                )}
+                <span className={`inline-block mt-1.5 px-2 py-0.5 text-[10px] font-semibold rounded-full ${
+                  tierIsGold
+                    ? 'bg-gold/15 text-gold'
+                    : 'bg-text/10 text-text-muted'
+                }`}>
+                  {tierLabel}
+                </span>
+              </div>
+
+              {/* Nav links */}
+              <div className="py-1 border-b border-border">
+                {navItems.map((item) => (
+                  <button
+                    key={item.to}
+                    onClick={() => { setMobileMenuOpen(false); navigate(item.to); }}
+                    className={`w-full flex items-center gap-2.5 px-3.5 py-2 text-xs transition-colors ${
+                      location.pathname === item.to || (item.to === '/' && location.pathname === '/')
+                        ? 'text-gold bg-gold/5'
+                        : 'text-text-secondary hover:bg-text/[0.04]'
+                    }`}
+                  >
+                    {item.icon}
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Upgrade for free users */}
+              {!isGold && (
+                <div className="px-3.5 py-2.5 border-b border-border">
+                  <button
+                    onClick={() => { setMobileMenuOpen(false); setShowPricing(true); }}
+                    className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-gold/30 bg-gold/5 text-gold text-xs font-semibold hover:bg-gold/10 transition-colors"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+                    </svg>
+                    Try Gold Free
+                  </button>
+                </div>
+              )}
+
+              {/* Sign out */}
+              <div className="py-1">
+                <button
+                  onClick={handleSignOut}
+                  className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs text-red-400 hover:bg-red-500/5 transition-colors"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
+                  </svg>
+                  Sign Out
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </header>
+
       {/* Main Content */}
-      <main className="flex-1 pb-20 md:pb-0 md:ml-[220px] overflow-y-auto min-h-screen">
+      <main className="flex-1 pt-14 pb-20 md:pt-0 md:pb-0 md:ml-[220px] overflow-y-auto min-h-screen">
         <AnimatePresence mode="wait">
           <motion.div
             key={location.pathname}
