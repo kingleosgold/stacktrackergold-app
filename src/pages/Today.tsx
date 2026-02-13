@@ -10,8 +10,11 @@ import { formatCurrency, formatPercent, formatChange } from '../utils/format';
 import { METAL_COLORS, METAL_LABELS, METALS } from '../utils/constants';
 import { CardSkeleton } from '../components/Skeleton';
 import { BlurredContent } from '../components/BlurredContent';
+import { PricingModal } from '../components/PricingModal';
 import { AdvisorChat } from '../components/AdvisorChat';
 import type { Metal } from '../types/holding';
+
+const BANNER_DISMISS_KEY = 'stg_upgrade_banner_dismissed';
 
 const container = {
   hidden: { opacity: 0 },
@@ -404,8 +407,26 @@ function VaultWatchPanel({
 export default function Today() {
   const { holdings, getTotalsByMetal, loading: holdingsLoading } = useHoldings();
   const { prices, loading: pricesLoading, lastUpdated } = useSpotPrices(60000);
-  const { isGold } = useSubscription();
+  const { isGold, tier } = useSubscription();
   const [sparklineRaw, setSparklineRaw] = useState<PriceLogEntry[]>([]);
+  const [showPricing, setShowPricing] = useState(false);
+
+  // Upgrade banner — dismissible per session (comes back next session)
+  const [bannerDismissed, setBannerDismissed] = useState(() => {
+    try {
+      const stored = localStorage.getItem(BANNER_DISMISS_KEY);
+      if (!stored) return false;
+      // Check if dismissed today (resets each day)
+      const dismissed = JSON.parse(stored);
+      return dismissed.date === new Date().toISOString().split('T')[0];
+    } catch { return false; }
+  });
+  const dismissBanner = () => {
+    setBannerDismissed(true);
+    try {
+      localStorage.setItem(BANNER_DISMISS_KEY, JSON.stringify({ date: new Date().toISOString().split('T')[0] }));
+    } catch { /* ignore */ }
+  };
 
   // Intelligence state — always fetch for preview
   const [intelligence, setIntelligence] = useState<IntelligenceBrief[]>([]);
@@ -541,6 +562,36 @@ export default function Today() {
       </motion.div>
 
       <motion.div variants={container} initial="hidden" animate="show" className="space-y-6">
+
+        {/* ─── Upgrade Banner (free users only) ────────────────── */}
+        {!isGold && !bannerDismissed && (
+          <motion.div
+            variants={item}
+            className="relative rounded-xl border border-gold/25 bg-gradient-to-r from-gold/[0.04] to-gold/[0.02] px-5 py-3.5 flex items-center gap-4"
+          >
+            <div className="flex-1 min-w-0">
+              <p className="text-sm text-text">
+                <span className="text-gold font-medium">Try Gold free for 7 days</span>
+                <span className="text-text-muted"> — AI intelligence, vault data, and portfolio analytics</span>
+              </p>
+            </div>
+            <button
+              onClick={() => setShowPricing(true)}
+              className="shrink-0 px-4 py-2 bg-gold text-background text-xs font-semibold rounded-lg hover:bg-gold-hover transition-colors"
+            >
+              Start Free Trial
+            </button>
+            <button
+              onClick={dismissBanner}
+              className="shrink-0 p-1 text-text-muted hover:text-text transition-colors rounded"
+              aria-label="Dismiss"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </motion.div>
+        )}
 
         {/* ─── Portfolio Pulse (FREE) ──────────────────────────── */}
         {isLoading ? (
@@ -921,6 +972,12 @@ export default function Today() {
           </div>
         </div>
       </motion.div>
+
+      <PricingModal
+        isOpen={showPricing}
+        onClose={() => setShowPricing(false)}
+        currentTier={tier}
+      />
     </div>
   );
 }

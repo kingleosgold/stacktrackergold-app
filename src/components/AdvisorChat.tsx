@@ -213,9 +213,9 @@ export function AdvisorChat() {
         {!isGold ? (
           <button
             onClick={() => setShowPricing(true)}
-            className="w-full py-2.5 text-xs text-gold hover:text-gold-hover transition-colors text-center"
+            className="w-full py-2.5 text-sm text-gold hover:text-gold-hover hover:underline transition-all cursor-pointer opacity-90 hover:opacity-100 text-center"
           >
-            Try Gold Free for 7 Days to unlock AI Stack Advisor
+            Try Gold Free for 7 Days to unlock AI Stack Advisor &rarr;
           </button>
         ) : (
           <>

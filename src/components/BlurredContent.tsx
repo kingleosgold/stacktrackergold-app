@@ -24,9 +24,9 @@ export function BlurredContent({ children, upgradeText = 'Try Gold Free for 7 Da
       {upgradeText && (
         <button
           onClick={() => setShowPricing(true)}
-          className="block mt-2 text-xs text-gold hover:text-gold-hover transition-colors"
+          className="block mt-2.5 text-sm text-gold hover:text-gold-hover hover:underline transition-all cursor-pointer opacity-90 hover:opacity-100"
         >
-          {upgradeText}
+          {upgradeText} <span aria-hidden="true">&rarr;</span>
         </button>
       )}
       <PricingModal

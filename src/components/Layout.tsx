@@ -3,6 +3,7 @@ import { NavLink, Outlet, Link, useLocation, useNavigate } from 'react-router-do
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
 import { useSubscription } from '../hooks/useSubscription';
+import { PricingModal } from './PricingModal';
 import { createCheckoutSession } from '../services/api';
 
 const CHECKOUT_STORAGE_KEY = 'stg_checkout_redirect';
@@ -63,10 +64,11 @@ const navItems = [
 
 export default function Layout() {
   const { user, isConfigured, signOut } = useAuth();
-  const { tier } = useSubscription();
+  const { tier, isGold } = useSubscription();
   const location = useLocation();
   const navigate = useNavigate();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [showPricing, setShowPricing] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Close dropdown on click outside
@@ -159,6 +161,21 @@ export default function Layout() {
             ))}
           </ul>
         </nav>
+
+        {/* Upgrade button for free users */}
+        {!isGold && (
+          <div className="px-3 pb-3 shrink-0">
+            <button
+              onClick={() => setShowPricing(true)}
+              className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border border-gold/30 bg-gold/5 text-gold text-xs font-semibold hover:bg-gold/10 transition-colors"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+              </svg>
+              Try Gold Free
+            </button>
+          </div>
+        )}
 
         {/* User section at bottom — always visible */}
         <div className="p-4 border-t border-border shrink-0 relative" ref={menuRef}>
@@ -290,6 +307,12 @@ export default function Layout() {
           ))}
         </ul>
       </nav>
+
+      <PricingModal
+        isOpen={showPricing}
+        onClose={() => setShowPricing(false)}
+        currentTier={tier}
+      />
     </div>
   );
 }
