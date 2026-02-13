@@ -135,6 +135,10 @@ export default function Auth() {
         const { error } = await signUp(email, password);
         if (error) {
           setError(error.message);
+        } else if (isCheckoutRedirect) {
+          // During checkout flow, skip the confirmation message —
+          // the useEffect will handle the Stripe redirect once user is set
+          setCheckoutRedirecting(true);
         } else {
           setMessage('Check your email for a confirmation link!');
           setEmail('');
