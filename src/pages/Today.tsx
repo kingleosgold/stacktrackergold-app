@@ -518,6 +518,28 @@ export default function Today() {
     };
   }, [holdings, prices, getTotalsByMetal]);
 
+  // Portfolio Pulse narrative
+  const pulseNarrative = useMemo(() => {
+    if (!stats || stats.metalImpacts.length === 0) return null;
+    const change = stats.totalDailyChange;
+    const absChange = Math.abs(change);
+    const pctAbs = Math.abs(stats.totalDailyChangePercent);
+
+    if (pctAbs < 0.5) {
+      return 'Your stack is flat today. Metals moved less than 0.5%.';
+    }
+
+    // Top mover by dollar impact (already sorted)
+    const top = stats.metalImpacts[0];
+    const metalName = METAL_LABELS[top.metal];
+    const metalPct = Math.abs(top.changePercent).toFixed(1);
+
+    if (change > 0) {
+      return `Your stack gained ${formatCurrency(absChange)} today, driven by ${metalName}'s ${metalPct}% rally.`;
+    }
+    return `Your stack lost ${formatCurrency(absChange)} today as ${metalName} pulled back ${metalPct}%.`;
+  }, [stats]);
+
   // Sort metal movers by abs change percent
   const sortedMetalMovers = useMemo(() => {
     if (!prices) return METALS;
@@ -553,7 +575,12 @@ export default function Today() {
         transition={{ duration: 0.3 }}
         className="mb-8"
       >
-        <h1 className="text-2xl font-bold tracking-tight">Today</h1>
+        <div className="flex items-baseline gap-3">
+          <h1 className="text-2xl font-bold tracking-tight">Today</h1>
+          <span className="text-sm text-text-muted">
+            {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+          </span>
+        </div>
         {lastUpdated && (
           <p className="text-xs text-text-muted mt-1">
             Live prices · Updated {lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -623,6 +650,9 @@ export default function Today() {
                     </span>
                     <span className="text-xs text-text-muted">today</span>
                   </div>
+                  {pulseNarrative && (
+                    <p className="text-sm italic text-text-muted mt-2">{pulseNarrative}</p>
+                  )}
                 </div>
                 {portfolioSparkline.length >= 2 && (
                   <PortfolioSparkline
