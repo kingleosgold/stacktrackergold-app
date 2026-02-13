@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
 import { createCheckoutSession } from '../services/api';
@@ -34,6 +35,7 @@ const features = [
 
 export function PricingModal({ isOpen, onClose, currentTier }: PricingModalProps) {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [selected, setSelected] = useState<PricingOption>('monthly');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -41,14 +43,16 @@ export function PricingModal({ isOpen, onClose, currentTier }: PricingModalProps
   const isAlreadyGold = currentTier === 'gold' || currentTier === 'lifetime';
 
   const handleSubscribe = async () => {
-    if (!user) {
-      setError('Please sign in first');
-      return;
-    }
-
     const option = pricingOptions.find((o) => o.id === selected);
     if (!option?.priceId) {
       setError('This plan is not available yet');
+      return;
+    }
+
+    // If not signed in, redirect to auth with checkout intent
+    if (!user) {
+      onClose();
+      navigate(`/auth?redirect=checkout&plan=${selected}`);
       return;
     }
 

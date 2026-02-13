@@ -1,11 +1,21 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { createCheckoutSession } from '../services/api';
+
+const CHECKOUT_STORAGE_KEY = 'stg_checkout_redirect';
+
+const PRICE_IDS: Record<string, string> = {
+  monthly: import.meta.env.VITE_STRIPE_GOLD_MONTHLY_PRICE_ID || '',
+  yearly: import.meta.env.VITE_STRIPE_GOLD_YEARLY_PRICE_ID || '',
+  lifetime: import.meta.env.VITE_STRIPE_GOLD_LIFETIME_PRICE_ID || '',
+};
 
 type AuthMode = 'signin' | 'signup' | 'forgot';
 
 export default function Auth() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user, loading, isConfigured, signIn, signUp, signInWithGoogle, signInWithApple, resetPasswordForEmail } = useAuth();
 
   const [mode, setMode] = useState<AuthMode>('signin');
@@ -15,13 +25,57 @@ export default function Auth() {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [checkoutRedirecting, setCheckoutRedirecting] = useState(false);
+  const checkoutAttempted = useRef(false);
 
-  // Redirect if already logged in
+  // Detect checkout redirect intent from URL or localStorage
+  const redirectParam = searchParams.get('redirect');
+  const planParam = searchParams.get('plan');
+  const isCheckoutRedirect = redirectParam === 'checkout' && !!planParam;
+
+  // Also check localStorage for OAuth return
+  const getStoredCheckout = useCallback((): string | null => {
+    try {
+      const stored = localStorage.getItem(CHECKOUT_STORAGE_KEY);
+      if (stored) {
+        localStorage.removeItem(CHECKOUT_STORAGE_KEY);
+        return stored;
+      }
+    } catch { /* ignore */ }
+    return null;
+  }, []);
+
+  // After sign in, redirect to Stripe checkout
   useEffect(() => {
-    if (user && !loading) {
+    if (!user || loading || checkoutAttempted.current) return;
+
+    // Check URL params first, then localStorage (for OAuth return)
+    const plan = planParam || getStoredCheckout();
+    if (!plan) {
       navigate('/');
+      return;
     }
-  }, [user, loading, navigate]);
+
+    const priceId = PRICE_IDS[plan];
+    if (!priceId) {
+      navigate('/');
+      return;
+    }
+
+    checkoutAttempted.current = true;
+    setCheckoutRedirecting(true);
+
+    createCheckoutSession(user.id, priceId)
+      .then(({ url }) => {
+        window.location.href = url;
+      })
+      .catch(() => {
+        setCheckoutRedirecting(false);
+        setError('Failed to start checkout. Please try again from Settings.');
+        // Clean URL params
+        window.history.replaceState({}, '', '/auth');
+      });
+  }, [user, loading, planParam, getStoredCheckout, navigate]);
 
   if (!isConfigured) {
     return (
@@ -42,10 +96,16 @@ export default function Auth() {
     );
   }
 
-  if (loading) {
+  if (loading || checkoutRedirecting) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-text-muted">Loading...</p>
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="max-w-md w-full text-center">
+          <img src="/icon-512.png" alt="Stack Tracker Gold" className="w-16 h-16 mx-auto mb-3 rounded-xl" />
+          <h1 className="text-3xl font-bold text-gold mb-4">Stack Tracker Gold</h1>
+          <p className="text-text-muted">
+            {checkoutRedirecting ? 'Redirecting to checkout...' : 'Loading...'}
+          </p>
+        </div>
       </div>
     );
   }
@@ -85,9 +145,8 @@ export default function Auth() {
         const { error } = await signIn(email, password);
         if (error) {
           setError(error.message);
-        } else {
-          navigate('/');
         }
+        // Navigation handled by useEffect (supports checkout redirect)
       }
     } catch (err) {
       setError('An unexpected error occurred');
@@ -98,6 +157,10 @@ export default function Auth() {
 
   const handleGoogleSignIn = async () => {
     setError(null);
+    // Store checkout plan for OAuth return
+    if (isCheckoutRedirect && planParam) {
+      localStorage.setItem(CHECKOUT_STORAGE_KEY, planParam);
+    }
     const { error } = await signInWithGoogle();
     if (error) {
       setError(error.message);
@@ -106,6 +169,10 @@ export default function Auth() {
 
   const handleAppleSignIn = async () => {
     setError(null);
+    // Store checkout plan for OAuth return
+    if (isCheckoutRedirect && planParam) {
+      localStorage.setItem(CHECKOUT_STORAGE_KEY, planParam);
+    }
     const { error } = await signInWithApple();
     if (error) {
       setError(error.message);
@@ -117,6 +184,7 @@ export default function Auth() {
       <div className="max-w-md w-full">
         {/* Logo/Header */}
         <div className="text-center mb-8">
+          <img src="/icon-512.png" alt="Stack Tracker Gold" className="w-16 h-16 mx-auto mb-3 rounded-xl" />
           <h1 className="text-3xl font-bold text-gold mb-2">Stack Tracker Gold</h1>
           <p className="text-text-muted">
             {mode === 'forgot'
@@ -126,6 +194,13 @@ export default function Auth() {
               : 'Create a new account'}
           </p>
         </div>
+
+        {/* Checkout redirect banner */}
+        {isCheckoutRedirect && (
+          <div className="mb-4 p-3 rounded-lg bg-gold/10 border border-gold/30 text-center">
+            <p className="text-sm text-gold font-medium">Sign in or create an account to complete your Gold subscription</p>
+          </div>
+        )}
 
         {/* Auth Card */}
         <div className="bg-surface border border-border rounded-lg p-6">

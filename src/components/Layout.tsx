@@ -1,6 +1,16 @@
-import { NavLink, Outlet, Link, useLocation } from 'react-router-dom';
+import { useState, useRef, useEffect } from 'react';
+import { NavLink, Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
+import { useSubscription } from '../hooks/useSubscription';
+import { createCheckoutSession } from '../services/api';
+
+const CHECKOUT_STORAGE_KEY = 'stg_checkout_redirect';
+const PRICE_IDS: Record<string, string> = {
+  monthly: import.meta.env.VITE_STRIPE_GOLD_MONTHLY_PRICE_ID || '',
+  yearly: import.meta.env.VITE_STRIPE_GOLD_YEARLY_PRICE_ID || '',
+  lifetime: import.meta.env.VITE_STRIPE_GOLD_LIFETIME_PRICE_ID || '',
+};
 
 const navItems = [
   {
@@ -52,14 +62,59 @@ const navItems = [
 ];
 
 export default function Layout() {
-  const { user, isConfigured } = useAuth();
+  const { user, isConfigured, signOut } = useAuth();
+  const { tier } = useSubscription();
   const location = useLocation();
+  const navigate = useNavigate();
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown on click outside
+  useEffect(() => {
+    if (!userMenuOpen) return;
+    const handleClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setUserMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [userMenuOpen]);
+
+  // Close dropdown on route change
+  useEffect(() => {
+    setUserMenuOpen(false);
+  }, [location.pathname]);
+
+  // Handle OAuth return with checkout intent (user lands on / after OAuth)
+  useEffect(() => {
+    if (!user) return;
+    try {
+      const plan = localStorage.getItem(CHECKOUT_STORAGE_KEY);
+      if (!plan) return;
+      localStorage.removeItem(CHECKOUT_STORAGE_KEY);
+      const priceId = PRICE_IDS[plan];
+      if (!priceId) return;
+      createCheckoutSession(user.id, priceId)
+        .then(({ url }) => { window.location.href = url; })
+        .catch(() => { /* silently fail, user can retry from settings */ });
+    } catch { /* ignore */ }
+  }, [user]);
+
+  const handleSignOut = async () => {
+    setUserMenuOpen(false);
+    await signOut();
+    navigate('/auth');
+  };
+
+  const tierLabel = tier === 'lifetime' ? 'Lifetime' : tier === 'gold' ? 'Gold' : 'Free';
+  const tierIsGold = tier === 'gold' || tier === 'lifetime';
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-background">
       {/* Desktop Sidebar */}
-      <aside className="hidden md:flex flex-col w-[220px] min-h-screen bg-sidebar border-r border-border">
-        <div className="p-5 pb-6">
+      <aside className="hidden md:flex flex-col w-[220px] h-screen fixed top-0 left-0 bg-sidebar border-r border-border z-40">
+        <div className="p-5 pb-6 shrink-0">
           <Link to="/" className="flex items-center gap-2.5">
             <img src="/icon-512.png" alt="Stack Tracker Gold" className="w-8 h-8 rounded-lg" />
             <div>
@@ -71,7 +126,7 @@ export default function Layout() {
           </Link>
         </div>
 
-        <nav className="flex-1 px-3">
+        <nav className="flex-1 overflow-y-auto px-3">
           <ul className="space-y-0.5">
             {navItems.map((item) => (
               <li key={item.to}>
@@ -105,19 +160,75 @@ export default function Layout() {
           </ul>
         </nav>
 
-        {/* User section at bottom */}
-        <div className="p-4 border-t border-border">
+        {/* User section at bottom — always visible */}
+        <div className="p-4 border-t border-border shrink-0 relative" ref={menuRef}>
+          {/* Dropdown menu (pops upward) */}
+          <AnimatePresence>
+            {userMenuOpen && user && (
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 8 }}
+                transition={{ duration: 0.15 }}
+                className="absolute bottom-full left-3 right-3 mb-2 bg-surface border border-border rounded-lg shadow-xl overflow-hidden z-50"
+              >
+                {/* User info */}
+                <div className="px-3.5 py-3 border-b border-border">
+                  <p className="text-xs font-medium text-text truncate">{user.user_metadata?.full_name || user.email}</p>
+                  {user.user_metadata?.full_name && (
+                    <p className="text-[10px] text-text-muted truncate mt-0.5">{user.email}</p>
+                  )}
+                  <span className={`inline-block mt-1.5 px-2 py-0.5 text-[10px] font-semibold rounded-full ${
+                    tierIsGold
+                      ? 'bg-gold/15 text-gold'
+                      : 'bg-text/10 text-text-muted'
+                  }`}>
+                    {tierLabel}
+                  </span>
+                </div>
+                {/* Menu items */}
+                <div className="py-1">
+                  <button
+                    onClick={() => { setUserMenuOpen(false); navigate('/settings'); }}
+                    className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs text-text-secondary hover:bg-text/[0.04] transition-colors"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    Account Settings
+                  </button>
+                  <button
+                    onClick={handleSignOut}
+                    className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs text-red-400 hover:bg-red-500/5 transition-colors"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
+                    </svg>
+                    Sign Out
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           {isConfigured && user ? (
-            <div className="flex items-center gap-2.5">
-              <div className="w-7 h-7 rounded-full bg-gold/15 flex items-center justify-center">
+            <button
+              onClick={() => setUserMenuOpen(!userMenuOpen)}
+              className="w-full flex items-center gap-2.5 rounded-lg hover:bg-text/[0.04] transition-colors p-1 -m-1"
+            >
+              <div className="w-7 h-7 rounded-full bg-gold/15 flex items-center justify-center shrink-0">
                 <span className="text-[11px] font-semibold text-gold">
                   {(user.email?.[0] || 'U').toUpperCase()}
                 </span>
               </div>
-              <p className="text-[11px] text-text-muted truncate flex-1" title={user.email || ''}>
+              <p className="text-[11px] text-text-muted truncate flex-1 text-left" title={user.email || ''}>
                 {user.email}
               </p>
-            </div>
+              <svg className={`w-3.5 h-3.5 text-text-muted shrink-0 transition-transform ${userMenuOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" />
+              </svg>
+            </button>
           ) : isConfigured ? (
             <Link
               to="/auth"
@@ -133,7 +244,7 @@ export default function Layout() {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 pb-20 md:pb-0 overflow-y-auto min-h-screen">
+      <main className="flex-1 pb-20 md:pb-0 md:ml-[220px] overflow-y-auto min-h-screen">
         <AnimatePresence mode="wait">
           <motion.div
             key={location.pathname}
