@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabase';
 
-const API_BASE_URL = 'https://stack-tracker-pro-production.up.railway.app';
+const API_BASE_URL = 'https://api.stacktrackergold.com';
 
 export interface MetalChange {
   amount?: number;
@@ -296,6 +296,21 @@ export async function createCustomerPortal(userId: string): Promise<{ url: strin
     throw new Error(data.error || `Portal failed: ${response.status}`);
   }
   return response.json();
+}
+
+// ─── AI Daily Brief ──────────────────────────────────────────────
+
+export interface DailyBrief {
+  brief_text: string;
+  generated_at: string;
+  date: string;
+}
+
+export async function fetchDailyBrief(userId: string): Promise<DailyBrief | null> {
+  const response = await fetch(`${API_BASE_URL}/api/daily-brief?userId=${encodeURIComponent(userId)}`);
+  if (!response.ok) return null;
+  const data = await response.json();
+  return data.brief || null;
 }
 
 // ─── AI Stack Advisor ────────────────────────────────────────────
