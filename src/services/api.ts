@@ -277,11 +277,8 @@ export interface SyncSubscriptionResponse {
   error?: string;
 }
 
-// TODO: /api/sync-subscription has no confirmed /v1/ equivalent on stg-api.
-// Syncs the user's Stripe subscription tier to Supabase on login and from Settings.
-// Check if stg-api exposes /v1/stripe/sync or /v1/subscription/sync and update accordingly.
 export async function syncSubscription(userId: string): Promise<SyncSubscriptionResponse> {
-  const response = await fetch(`${API_BASE_URL}/api/sync-subscription?user_id=${encodeURIComponent(userId)}`);
+  const response = await fetch(`${API_BASE_URL}/v1/sync-subscription?user_id=${encodeURIComponent(userId)}`);
   if (!response.ok) {
     const data = await response.json().catch(() => ({}));
     throw new Error(data.error || `Sync failed: ${response.status}`);
