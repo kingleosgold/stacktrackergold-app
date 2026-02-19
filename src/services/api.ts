@@ -44,68 +44,39 @@ export async function fetchSpotPrices(): Promise<SpotPrices> {
     throw new Error(`Failed to fetch spot prices: ${response.status}`);
   }
 
-  const data = await response.json();
+  const raw = await response.json();
 
-  // The API only returns change data for gold and silver.
-  // Compute platinum and palladium change from price_log.
-  if (!data.change?.platinum || !data.change?.palladium) {
-    try {
-      const ptPdChange = await fetchPreviousClose();
-      if (ptPdChange) {
-        if (!data.change.platinum && ptPdChange.platinum_prev) {
-          const ptChange = data.platinum - ptPdChange.platinum_prev;
-          data.change.platinum = {
-            amount: ptChange,
-            percent: ptPdChange.platinum_prev > 0 ? (ptChange / ptPdChange.platinum_prev) * 100 : 0,
-            prevClose: ptPdChange.platinum_prev,
-          };
-        }
-        if (!data.change.palladium && ptPdChange.palladium_prev) {
-          const pdChange = data.palladium - ptPdChange.palladium_prev;
-          data.change.palladium = {
-            amount: pdChange,
-            percent: ptPdChange.palladium_prev > 0 ? (pdChange / ptPdChange.palladium_prev) * 100 : 0,
-            prevClose: ptPdChange.palladium_prev,
-          };
-        }
-      }
-    } catch (e) {
-      console.warn('Failed to compute pt/pd change from price_log:', e);
-    }
+  // Transform /v1/prices nested shape → flat SpotPrices interface
+  const metals = ['gold', 'silver', 'platinum', 'palladium'] as const;
+  const change: Record<string, MetalChange> = {};
+
+  for (const metal of metals) {
+    const m = raw.prices[metal];
+    const pct = m.change_pct || 0;
+    const prevClose = pct !== 0 ? m.price / (1 + pct / 100) : m.price;
+    change[metal] = {
+      amount: m.price - prevClose,
+      percent: pct,
+      prevClose,
+    };
   }
 
-  // Ensure change object always has all 4 metals
-  data.change.platinum = data.change.platinum || {};
-  data.change.palladium = data.change.palladium || {};
-
-  return data;
-}
-
-/**
- * Fetch the previous trading day's closing prices from price_log.
- * We find the last record from before today (UTC midnight).
- */
-async function fetchPreviousClose(): Promise<{
-  platinum_prev: number;
-  palladium_prev: number;
-} | null> {
-  const today = new Date();
-  today.setUTCHours(0, 0, 0, 0);
-  const todayISO = today.toISOString();
-
-  const { data, error } = await supabase
-    .from('price_log')
-    .select('platinum_price, palladium_price')
-    .lt('created_at', todayISO)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .single();
-
-  if (error || !data) return null;
-
   return {
-    platinum_prev: data.platinum_price,
-    palladium_prev: data.palladium_price,
+    success: true,
+    gold: raw.prices.gold.price,
+    silver: raw.prices.silver.price,
+    platinum: raw.prices.platinum.price,
+    palladium: raw.prices.palladium.price,
+    timestamp: raw.timestamp,
+    source: raw.source,
+    cacheAgeMinutes: 0,
+    change: {
+      gold: change.gold,
+      silver: change.silver,
+      platinum: change.platinum,
+      palladium: change.palladium,
+      source: raw.source,
+    },
   };
 }
 
@@ -167,7 +138,29 @@ export async function fetchIntelligence(date?: string): Promise<IntelligenceResp
   if (!response.ok) {
     throw new Error(`Failed to fetch intelligence: ${response.status}`);
   }
-  return response.json();
+
+  const raw = await response.json();
+
+  // Transform /v1/market-intel { articles } → { briefs } shape
+  const severityToScore: Record<string, number> = { high: 9, medium: 5, info: 2, low: 1 };
+  const briefs: IntelligenceBrief[] = (raw.articles || []).map((a: { id: string; title: string; summary: string; metal?: string; severity?: string; published_at?: string }) => ({
+    id: a.id,
+    date: a.published_at?.split('T')[0] || d,
+    category: a.metal || 'general',
+    title: a.title,
+    summary: a.summary,
+    source: '',
+    source_url: '',
+    relevance_score: severityToScore[a.severity || 'medium'] || 5,
+    created_at: a.published_at || '',
+  }));
+
+  return {
+    success: true,
+    date: d,
+    briefs,
+    generated_at: raw.articles?.[0]?.published_at || new Date().toISOString(),
+  };
 }
 
 // ─── COMEX Vault Data ───────────────────────────────────────────
@@ -194,12 +187,32 @@ export interface VaultDataResponse {
   };
 }
 
-export async function fetchVaultData(source = 'comex', days = 30): Promise<VaultDataResponse> {
-  const response = await fetch(`${API_BASE_URL}/v1/vault-watch?source=${source}&days=${days}`);
-  if (!response.ok) {
-    throw new Error(`Failed to fetch vault data: ${response.status}`);
+export async function fetchVaultData(source = 'comex', _days = 30): Promise<VaultDataResponse> {
+  // /v1/vault-watch returns a single snapshot per metal; fetch all 4 and merge
+  const metals = ['gold', 'silver', 'platinum', 'palladium'] as const;
+  const results = await Promise.all(
+    metals.map(async (metal) => {
+      const res = await fetch(`${API_BASE_URL}/v1/vault-watch?metal=${metal}`);
+      if (!res.ok) throw new Error(`Failed to fetch ${metal} vault data: ${res.status}`);
+      return res.json();
+    }),
+  );
+
+  const data = {} as VaultDataResponse['data'];
+  for (let i = 0; i < metals.length; i++) {
+    const raw = results[i];
+    data[metals[i]] = [{
+      date: raw.date,
+      registered_oz: raw.registered_oz || 0,
+      eligible_oz: raw.eligible_oz || 0,
+      combined_oz: raw.combined_oz || 0,
+      registered_change_oz: raw.daily_change?.registered || 0,
+      eligible_change_oz: raw.daily_change?.eligible || 0,
+      oversubscribed_ratio: raw.oversubscribed_ratio || 0,
+    }];
   }
-  return response.json();
+
+  return { success: true, source, days: _days, data };
 }
 
 // ─── Spot Price History ─────────────────────────────────────────
@@ -221,11 +234,38 @@ export interface SpotPriceHistoryResponse {
 }
 
 export async function fetchSpotPriceHistory(range = '1M'): Promise<SpotPriceHistoryResponse> {
-  const response = await fetch(`${API_BASE_URL}/v1/prices/history?range=${range}`);
-  if (!response.ok) {
-    throw new Error(`Failed to fetch spot price history: ${response.status}`);
+  // /v1/prices/history returns per-metal data; fetch all 4 and merge by timestamp
+  const metals = ['gold', 'silver', 'platinum', 'palladium'] as const;
+  const results = await Promise.all(
+    metals.map(async (metal) => {
+      const res = await fetch(`${API_BASE_URL}/v1/prices/history?range=${range}&metal=${metal}`);
+      if (!res.ok) throw new Error(`Failed to fetch ${metal} price history: ${res.status}`);
+      return res.json();
+    }),
+  );
+
+  // Merge by date key — timestamps from the same price_log should align
+  const dateMap = new Map<string, SpotPriceHistoryPoint>();
+  for (let i = 0; i < metals.length; i++) {
+    const metal = metals[i];
+    for (const entry of results[i].prices || []) {
+      const key = entry.date;
+      if (!dateMap.has(key)) {
+        dateMap.set(key, { date: key, gold: 0, silver: 0, platinum: 0, palladium: 0 });
+      }
+      dateMap.get(key)![metal] = entry.price;
+    }
   }
-  return response.json();
+
+  const data = Array.from(dateMap.values()).sort((a, b) => a.date.localeCompare(b.date));
+
+  return {
+    success: true,
+    range,
+    totalPoints: results[0]?.data_points || data.length,
+    sampledPoints: data.length,
+    data,
+  };
 }
 
 // ─── Subscription Sync ──────────────────────────────────────────
