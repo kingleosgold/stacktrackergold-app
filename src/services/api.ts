@@ -38,7 +38,7 @@ export interface PriceLogEntry {
 }
 
 export async function fetchSpotPrices(): Promise<SpotPrices> {
-  const response = await fetch(`${API_BASE_URL}/api/spot-prices`);
+  const response = await fetch(`${API_BASE_URL}/v1/prices`);
 
   if (!response.ok) {
     throw new Error(`Failed to fetch spot prices: ${response.status}`);
@@ -163,7 +163,7 @@ export interface IntelligenceResponse {
 export async function fetchIntelligence(date?: string): Promise<IntelligenceResponse> {
   // Use Eastern time for the date since the intelligence cron runs at 6:30 AM EST
   const d = date || new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
-  const response = await fetch(`${API_BASE_URL}/api/intelligence?date=${d}`);
+  const response = await fetch(`${API_BASE_URL}/v1/market-intel?date=${d}`);
   if (!response.ok) {
     throw new Error(`Failed to fetch intelligence: ${response.status}`);
   }
@@ -195,7 +195,7 @@ export interface VaultDataResponse {
 }
 
 export async function fetchVaultData(source = 'comex', days = 30): Promise<VaultDataResponse> {
-  const response = await fetch(`${API_BASE_URL}/api/vault-data?source=${source}&days=${days}`);
+  const response = await fetch(`${API_BASE_URL}/v1/vault-watch?source=${source}&days=${days}`);
   if (!response.ok) {
     throw new Error(`Failed to fetch vault data: ${response.status}`);
   }
@@ -221,7 +221,7 @@ export interface SpotPriceHistoryResponse {
 }
 
 export async function fetchSpotPriceHistory(range = '1M'): Promise<SpotPriceHistoryResponse> {
-  const response = await fetch(`${API_BASE_URL}/api/spot-price-history?range=${range}`);
+  const response = await fetch(`${API_BASE_URL}/v1/prices/history?range=${range}`);
   if (!response.ok) {
     throw new Error(`Failed to fetch spot price history: ${response.status}`);
   }
@@ -237,6 +237,9 @@ export interface SyncSubscriptionResponse {
   error?: string;
 }
 
+// TODO: /api/sync-subscription has no confirmed /v1/ equivalent on stg-api.
+// Syncs the user's Stripe subscription tier to Supabase on login and from Settings.
+// Check if stg-api exposes /v1/stripe/sync or /v1/subscription/sync and update accordingly.
 export async function syncSubscription(userId: string): Promise<SyncSubscriptionResponse> {
   const response = await fetch(`${API_BASE_URL}/api/sync-subscription?user_id=${encodeURIComponent(userId)}`);
   if (!response.ok) {
@@ -252,7 +255,7 @@ export async function createCheckoutSession(
   userId: string,
   priceId: string,
 ): Promise<{ url: string }> {
-  const response = await fetch(`${API_BASE_URL}/api/stripe/create-checkout-session`, {
+  const response = await fetch(`${API_BASE_URL}/v1/stripe/create-checkout-session`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -270,7 +273,7 @@ export async function createCheckoutSession(
 }
 
 export async function verifyStripeSession(sessionId: string): Promise<{ success: boolean; tier?: string }> {
-  const response = await fetch(`${API_BASE_URL}/api/stripe/verify-session`, {
+  const response = await fetch(`${API_BASE_URL}/v1/stripe/verify-session`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ session_id: sessionId }),
@@ -283,7 +286,7 @@ export async function verifyStripeSession(sessionId: string): Promise<{ success:
 }
 
 export async function createCustomerPortal(userId: string): Promise<{ url: string }> {
-  const response = await fetch(`${API_BASE_URL}/api/stripe/customer-portal`, {
+  const response = await fetch(`${API_BASE_URL}/v1/stripe/customer-portal`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -307,7 +310,7 @@ export interface DailyBrief {
 }
 
 export async function fetchDailyBrief(userId: string): Promise<DailyBrief | null> {
-  const response = await fetch(`${API_BASE_URL}/api/daily-brief?userId=${encodeURIComponent(userId)}`);
+  const response = await fetch(`${API_BASE_URL}/v1/daily-brief?userId=${encodeURIComponent(userId)}`);
   if (!response.ok) return null;
   const data = await response.json();
   return data.brief || null;
@@ -325,7 +328,7 @@ export async function sendAdvisorMessage(
   message: string,
   conversationHistory: AdvisorMessage[],
 ): Promise<{ response: string }> {
-  const response = await fetch(`${API_BASE_URL}/api/advisor/chat`, {
+  const response = await fetch(`${API_BASE_URL}/v1/advisor/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ userId, message, conversationHistory }),
