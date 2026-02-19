@@ -1,5 +1,6 @@
 import { Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
+import { SubscriptionProvider } from './hooks/useSubscription';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import Layout from './components/Layout';
 import Today from './pages/Today';
@@ -13,6 +14,7 @@ import ResetPassword from './pages/ResetPassword';
 function App() {
   return (
     <AuthProvider>
+      <SubscriptionProvider>
       <ErrorBoundary>
         <Routes>
           <Route path="/auth" element={<Auth />} />
@@ -26,6 +28,7 @@ function App() {
           </Route>
         </Routes>
       </ErrorBoundary>
+      </SubscriptionProvider>
     </AuthProvider>
   );
 }
