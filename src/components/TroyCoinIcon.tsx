@@ -43,8 +43,9 @@ export function TroyCoinIcon({ size = 20, className }: TroyCoinIconProps) {
       {/* 5. Embossed T — highlight (offset down) */}
       <text
         x="28"
-        y="37.5"
+        y="29.5"
         textAnchor="middle"
+        dominantBaseline="central"
         fontFamily="Georgia, 'Times New Roman', serif"
         fontWeight="bold"
         fontSize="34"
@@ -57,8 +58,9 @@ export function TroyCoinIcon({ size = 20, className }: TroyCoinIconProps) {
       {/* 5. Embossed T — face */}
       <text
         x="28"
-        y="37"
+        y="29"
         textAnchor="middle"
+        dominantBaseline="central"
         fontFamily="Georgia, 'Times New Roman', serif"
         fontWeight="bold"
         fontSize="34"
