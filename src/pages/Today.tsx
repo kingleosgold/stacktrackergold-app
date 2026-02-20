@@ -445,15 +445,15 @@ export default function Today() {
   const [dailyBrief, setDailyBrief] = useState<DailyBrief | null>(null);
   const [briefLoading, setBriefLoading] = useState(false);
 
-  // Fetch daily brief for Gold users
+  // Fetch daily brief for all users (free users see preview)
   useEffect(() => {
-    if (!isGold || !user?.id) return;
+    if (!user?.id) return;
     setBriefLoading(true);
     fetchDailyBrief(user.id)
       .then(setDailyBrief)
       .catch((e) => console.error('Failed to fetch daily brief:', e))
       .finally(() => setBriefLoading(false));
-  }, [isGold, user?.id]);
+  }, [user?.id]);
 
   // Fetch sparkline data
   useEffect(() => {
@@ -913,7 +913,7 @@ export default function Today() {
                         )}
                       </>
                     ) : (
-                      <BlurredContent upgradeText={`${intelligence.length - 1} more brief${intelligence.length - 1 !== 1 ? 's' : ''} today — Try Gold Free for 7 Days`}>
+                      <div className="relative">
                         <div className="space-y-3">
                           {intelligence.slice(1, 3).map((brief) => (
                             <IntelligenceBriefCard
@@ -924,7 +924,14 @@ export default function Today() {
                             />
                           ))}
                         </div>
-                      </BlurredContent>
+                        <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-background to-transparent pointer-events-none" />
+                        <button
+                          onClick={() => setShowPricing(true)}
+                          className="block mt-3 text-sm text-gold hover:text-gold-hover hover:underline transition-all"
+                        >
+                          {intelligence.length - 1} more brief{intelligence.length - 1 !== 1 ? 's' : ''} today — Unlock with Gold &rarr;
+                        </button>
+                      </div>
                     )
                   )}
                 </div>
@@ -966,41 +973,58 @@ export default function Today() {
             {/* AI Daily Brief — Morning Brief card */}
             <motion.div variants={item}>
               <h2 className="text-sm font-medium text-text-muted uppercase tracking-wider mb-3">Troy's Take</h2>
-              {isGold ? (
-                briefLoading ? (
-                  <CardSkeleton />
-                ) : dailyBrief ? (
-                  <div className="rounded-xl bg-surface border-l-4 border-l-gold border border-border p-5">
-                    <div className="flex items-center gap-2 mb-3">
-                      <TroyCoinIcon size={18} />
-                      <span className="text-xs font-medium text-gold">Troy's Take</span>
-                      <span className="text-[10px] text-text-muted ml-auto">
-                        {new Date(dailyBrief.generated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                    </div>
-                    <div className="space-y-3">
-                      {dailyBrief.brief_text.split('\n\n').map((paragraph, i) => (
-                        <p key={i} className="text-sm text-text-secondary leading-relaxed">{paragraph}</p>
-                      ))}
-                    </div>
+              {briefLoading ? (
+                <CardSkeleton />
+              ) : dailyBrief ? (
+                <div className="rounded-xl bg-surface border-l-4 border-l-gold border border-border p-5">
+                  <div className="flex items-center gap-2 mb-3">
+                    <TroyCoinIcon size={18} />
+                    <span className="text-xs font-medium text-gold">Troy's Take</span>
+                    <span className="text-[10px] text-text-muted ml-auto">
+                      {new Date(dailyBrief.generated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
                   </div>
-                ) : (
-                  <div className="rounded-xl bg-surface border border-border p-6 text-center">
-                    <div className="w-10 h-10 mx-auto flex items-center justify-center mb-3">
-                      <TroyCoinIcon size={40} />
-                    </div>
-                    <p className="text-sm font-medium text-text-secondary">Your first personalized brief arrives tomorrow at 6:30 AM</p>
-                    <p className="text-xs text-text-muted mt-1">AI-powered analysis tailored to your stack</p>
-                  </div>
-                )
+                  {(() => {
+                    const paragraphs = dailyBrief.brief_text.split('\n\n');
+                    if (isGold) {
+                      return (
+                        <div className="space-y-3">
+                          {paragraphs.map((paragraph, i) => (
+                            <p key={i} className="text-sm text-text-secondary leading-relaxed">{paragraph}</p>
+                          ))}
+                        </div>
+                      );
+                    }
+                    // Free: 3-line preview with gradient fade + CTA
+                    const preview = paragraphs.slice(0, 3);
+                    return (
+                      <div className="relative">
+                        <div className="space-y-3">
+                          {preview.map((paragraph, i) => (
+                            <p key={i} className="text-sm text-text-secondary leading-relaxed">{paragraph}</p>
+                          ))}
+                        </div>
+                        {paragraphs.length > 3 && (
+                          <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-surface to-transparent pointer-events-none" />
+                        )}
+                        <button
+                          onClick={() => setShowPricing(true)}
+                          className="block mt-3 text-sm text-gold hover:text-gold-hover hover:underline transition-all"
+                        >
+                          Unlock Troy's full daily briefing with Gold &rarr;
+                        </button>
+                      </div>
+                    );
+                  })()}
+                </div>
               ) : (
-                <BlurredContent upgradeText="Unlock personalized briefings">
-                  <div className="rounded-xl bg-surface border border-border p-4 space-y-2">
-                    <p className="text-xs font-semibold text-gold inline-flex items-center gap-1.5"><TroyCoinIcon size={16} />Troy's Take — Feb 11</p>
-                    <p className="text-xs text-text-secondary leading-relaxed">Gold holds above $2,900 as markets digest inflation data. Silver futures rise on industrial demand outlook. COMEX registered inventories declined 2.3% this week, adding to the physical supply narrative...</p>
-                    <p className="text-xs text-text-muted">Your portfolio gained $342 today driven by gold's rally...</p>
+                <div className="rounded-xl bg-surface border border-border p-6 text-center">
+                  <div className="w-10 h-10 mx-auto flex items-center justify-center mb-3">
+                    <TroyCoinIcon size={40} />
                   </div>
-                </BlurredContent>
+                  <p className="text-sm font-medium text-text-secondary">Your first personalized brief arrives tomorrow at 6:30 AM</p>
+                  <p className="text-xs text-text-muted mt-1">AI-powered analysis tailored to your stack</p>
+                </div>
               )}
             </motion.div>
 

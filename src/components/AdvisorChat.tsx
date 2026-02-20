@@ -5,7 +5,9 @@ import { PricingModal } from './PricingModal';
 import { sendAdvisorMessage } from '../services/api';
 import type { AdvisorMessage } from '../services/api';
 
-const DAILY_LIMIT = 25;
+const FREE_DAILY_LIMIT = 3;
+const GOLD_DAILY_LIMIT = 30;
+const GOLD_COUNTER_THRESHOLD = 25; // Only show counter when Gold user has used 25+
 const STORAGE_KEY = 'advisor_usage';
 
 const SUGGESTED_QUESTIONS = [
@@ -93,7 +95,9 @@ export function AdvisorChat({ currentPage, isPanel }: AdvisorChatProps = {}) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const remaining = DAILY_LIMIT - usageCount;
+  const dailyLimit = isGold ? GOLD_DAILY_LIMIT : FREE_DAILY_LIMIT;
+  const remaining = dailyLimit - usageCount;
+  const atLimit = remaining <= 0;
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -103,7 +107,7 @@ export function AdvisorChat({ currentPage, isPanel }: AdvisorChatProps = {}) {
   }, [messages, loading]);
 
   const sendMessage = async (text: string) => {
-    if (!user || !isGold || !text.trim() || loading || remaining <= 0) return;
+    if (!user || !text.trim() || loading || atLimit) return;
 
     const userMsg: AdvisorMessage = { role: 'user', content: text.trim() };
     const updatedMessages = [...messages, userMsg];
@@ -150,8 +154,9 @@ export function AdvisorChat({ currentPage, isPanel }: AdvisorChatProps = {}) {
               {SUGGESTED_QUESTIONS.map((q) => (
                 <button
                   key={q}
-                  onClick={() => isGold ? sendMessage(q) : setShowPricing(true)}
-                  className="text-xs px-3 py-1.5 rounded-full border border-gold/30 text-gold hover:bg-gold/10 transition-colors"
+                  onClick={() => sendMessage(q)}
+                  disabled={atLimit || loading}
+                  className="text-xs px-3 py-1.5 rounded-full border border-gold/30 text-gold hover:bg-gold/10 transition-colors disabled:opacity-40"
                 >
                   {q}
                 </button>
@@ -180,6 +185,23 @@ export function AdvisorChat({ currentPage, isPanel }: AdvisorChatProps = {}) {
                 </div>
               </div>
             ))}
+
+            {/* Free tier limit message with inline upgrade button */}
+            {atLimit && !isGold && (
+              <div className="flex justify-start">
+                <div className="max-w-[85%] rounded-xl px-3.5 py-2.5 text-sm leading-relaxed bg-background border border-border text-text">
+                  <div className="space-y-1">
+                    <p>That's my free limit for today. Upgrade to Gold and I'll analyze your entire stack anytime — cost basis, COMEX data, market intel, the works. Your call.</p>
+                  </div>
+                  <button
+                    onClick={() => setShowPricing(true)}
+                    className="mt-2 px-3 py-1.5 text-xs font-medium rounded-lg bg-gold text-background hover:bg-gold-hover transition-colors"
+                  >
+                    Upgrade to Gold
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Typing indicator */}
             {loading && (
@@ -215,42 +237,44 @@ export function AdvisorChat({ currentPage, isPanel }: AdvisorChatProps = {}) {
 
       {/* Input bar */}
       <div className="border-t border-border p-3">
-        {!isGold ? (
+        {/* Gold counter: only visible when 25+ used */}
+        {isGold && usageCount >= GOLD_COUNTER_THRESHOLD && (
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[10px] text-text-muted">
+              {atLimit ? 'Daily limit reached — resets at midnight.' : `${remaining} left for today — resets at midnight.`}
+            </span>
+          </div>
+        )}
+        {/* Free tier at-limit: show upgrade CTA instead of input */}
+        {atLimit && !isGold ? (
           <button
             onClick={() => setShowPricing(true)}
             className="w-full py-2.5 text-sm text-gold hover:text-gold-hover hover:underline transition-all cursor-pointer opacity-90 hover:opacity-100 text-center"
           >
-            Try Gold Free for 7 Days to unlock Troy &rarr;
+            Upgrade to Gold for 30 questions/day &rarr;
           </button>
         ) : (
-          <>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[10px] text-text-muted">
-                {remaining <= 0 ? 'Daily limit reached. Resets at midnight.' : `${remaining} question${remaining === 1 ? '' : 's'} remaining today`}
-              </span>
-            </div>
-            <form onSubmit={handleSubmit} className="flex gap-2">
-              <input
-                ref={inputRef}
-                type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value.slice(0, 500))}
-                onKeyDown={handleKeyDown}
-                placeholder={remaining <= 0 ? 'Daily limit reached' : 'Ask about your portfolio...'}
-                disabled={loading || remaining <= 0}
-                className="flex-1 px-3 py-2 rounded-lg bg-background border border-border text-sm focus:border-gold focus:outline-none disabled:opacity-50 placeholder:text-text-muted/50"
-              />
-              <button
-                type="submit"
-                disabled={loading || remaining <= 0 || !input.trim()}
-                className="px-3 py-2 bg-gold text-background rounded-lg hover:bg-gold-hover transition-colors disabled:opacity-40"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
-                </svg>
-              </button>
-            </form>
-          </>
+          <form onSubmit={handleSubmit} className="flex gap-2">
+            <input
+              ref={inputRef}
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value.slice(0, 500))}
+              onKeyDown={handleKeyDown}
+              placeholder={atLimit ? 'Daily limit reached' : 'Ask about your portfolio...'}
+              disabled={loading || atLimit}
+              className="flex-1 px-3 py-2 rounded-lg bg-background border border-border text-sm focus:border-gold focus:outline-none disabled:opacity-50 placeholder:text-text-muted/50"
+            />
+            <button
+              type="submit"
+              disabled={loading || atLimit || !input.trim()}
+              className="px-3 py-2 bg-gold text-background rounded-lg hover:bg-gold-hover transition-colors disabled:opacity-40"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
+              </svg>
+            </button>
+          </form>
         )}
       </div>
 
