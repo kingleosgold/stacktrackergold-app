@@ -187,32 +187,13 @@ export interface VaultDataResponse {
   };
 }
 
-export async function fetchVaultData(source = 'comex', _days = 30): Promise<VaultDataResponse> {
-  // /v1/vault-watch returns a single snapshot per metal; fetch all 4 and merge
-  const metals = ['gold', 'silver', 'platinum', 'palladium'] as const;
-  const results = await Promise.all(
-    metals.map(async (metal) => {
-      const res = await fetch(`${API_BASE_URL}/v1/vault-watch?metal=${metal}`);
-      if (!res.ok) throw new Error(`Failed to fetch ${metal} vault data: ${res.status}`);
-      return res.json();
-    }),
-  );
+export async function fetchVaultData(source = 'comex', days = 30): Promise<VaultDataResponse> {
+  // /v1/vault-watch?days=N returns { data: { gold: [...], silver: [...], ... } }
+  const res = await fetch(`${API_BASE_URL}/v1/vault-watch?days=${days}`);
+  if (!res.ok) throw new Error(`Failed to fetch vault data: ${res.status}`);
+  const raw = await res.json();
 
-  const data = {} as VaultDataResponse['data'];
-  for (let i = 0; i < metals.length; i++) {
-    const raw = results[i];
-    data[metals[i]] = [{
-      date: raw.date,
-      registered_oz: raw.registered_oz || 0,
-      eligible_oz: raw.eligible_oz || 0,
-      combined_oz: raw.combined_oz || 0,
-      registered_change_oz: raw.daily_change?.registered || 0,
-      eligible_change_oz: raw.daily_change?.eligible || 0,
-      oversubscribed_ratio: raw.oversubscribed_ratio || 0,
-    }];
-  }
-
-  return { success: true, source, days: _days, data };
+  return { success: true, source, days, data: raw.data || {} };
 }
 
 // ─── Spot Price History ─────────────────────────────────────────
@@ -238,7 +219,7 @@ export async function fetchSpotPriceHistory(range = '1M'): Promise<SpotPriceHist
   const metals = ['gold', 'silver', 'platinum', 'palladium'] as const;
   const results = await Promise.all(
     metals.map(async (metal) => {
-      const res = await fetch(`${API_BASE_URL}/v1/prices/history?range=${range}&metal=${metal}`);
+      const res = await fetch(`${API_BASE_URL}/v1/prices/history?range=${range}&metal=${metal}&maxPoints=200`);
       if (!res.ok) throw new Error(`Failed to fetch ${metal} price history: ${res.status}`);
       return res.json();
     }),
