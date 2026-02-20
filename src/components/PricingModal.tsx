@@ -26,8 +26,8 @@ const pricingOptions: { id: PricingOption; label: string; price: string; detail:
 const features = [
   'AI Intelligence Feed — daily market analysis',
   'COMEX Vault Watch — warehouse inventory data',
-  'AI Stack Advisor — personal portfolio AI chat',
-  'AI Daily Brief — morning market briefing',
+  'Troy — personal portfolio AI chat',
+  "Troy's Take — morning market briefing",
   'AI Deal Finder — best prices on bullion',
   'Spot Price History — full historical charts',
   'Advanced Analytics — portfolio deep dive',

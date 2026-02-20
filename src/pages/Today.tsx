@@ -4,14 +4,14 @@ import { Area, AreaChart, ResponsiveContainer, LineChart, Line, XAxis, YAxis, To
 import { useHoldings } from '../hooks/useHoldings';
 import { useSpotPrices } from '../hooks/useSpotPrices';
 import { useSubscription } from '../hooks/useSubscription';
-import { fetchSparklineData, fetchIntelligence, fetchVaultData } from '../services/api';
-import type { PriceLogEntry, IntelligenceBrief, VaultDataPoint } from '../services/api';
+import { fetchSparklineData, fetchIntelligence, fetchVaultData, fetchDailyBrief } from '../services/api';
+import type { PriceLogEntry, IntelligenceBrief, VaultDataPoint, DailyBrief } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 import { formatCurrency, formatPercent, formatChange } from '../utils/format';
 import { METAL_COLORS, METAL_LABELS, METALS } from '../utils/constants';
 import { CardSkeleton } from '../components/Skeleton';
 import { BlurredContent } from '../components/BlurredContent';
 import { PricingModal } from '../components/PricingModal';
-import { AdvisorChat } from '../components/AdvisorChat';
 import type { Metal } from '../types/holding';
 
 const BANNER_DISMISS_KEY = 'stg_upgrade_banner_dismissed';
@@ -408,6 +408,7 @@ export default function Today() {
   const { holdings, getTotalsByMetal, loading: holdingsLoading } = useHoldings();
   const { prices, loading: pricesLoading, lastUpdated } = useSpotPrices(60000);
   const { isGold, tier } = useSubscription();
+  const { user } = useAuth();
   const [sparklineRaw, setSparklineRaw] = useState<PriceLogEntry[]>([]);
   const [showPricing, setShowPricing] = useState(false);
 
@@ -432,11 +433,26 @@ export default function Today() {
   const [intelligence, setIntelligence] = useState<IntelligenceBrief[]>([]);
   const [intelligenceLoading, setIntelligenceLoading] = useState(false);
   const [expandedBriefId, setExpandedBriefId] = useState<string | null>(null);
+  const [showAllIntel, setShowAllIntel] = useState(false);
 
   // Vault state — always fetch for preview
   const [vaultData, setVaultData] = useState<Record<Metal, VaultDataPoint[]> | null>(null);
   const [vaultLoading, setVaultLoading] = useState(false);
   const [selectedVaultMetal, setSelectedVaultMetal] = useState<Metal>('gold');
+
+  // Daily Brief state
+  const [dailyBrief, setDailyBrief] = useState<DailyBrief | null>(null);
+  const [briefLoading, setBriefLoading] = useState(false);
+
+  // Fetch daily brief for Gold users
+  useEffect(() => {
+    if (!isGold || !user?.id) return;
+    setBriefLoading(true);
+    fetchDailyBrief(user.id)
+      .then(setDailyBrief)
+      .catch((e) => console.error('Failed to fetch daily brief:', e))
+      .finally(() => setBriefLoading(false));
+  }, [isGold, user?.id]);
 
   // Fetch sparkline data
   useEffect(() => {
@@ -840,8 +856,8 @@ export default function Today() {
             <motion.div variants={item}>
               <div className="flex items-center justify-between mb-3">
                 <div>
-                  <h2 className="text-sm font-medium text-text-muted uppercase tracking-wider mb-0.5">Intelligence Feed</h2>
-                  <p className="text-[11px] text-text-muted">AI-curated precious metals news and analysis</p>
+                  <h2 className="text-sm font-medium text-text-muted uppercase tracking-wider mb-0.5">Market Intelligence</h2>
+                  <p className="text-[11px] text-text-muted">Curated precious metals news and analysis</p>
                 </div>
                 {intelligence.length > 0 && (
                   <span className="text-[10px] text-text-muted bg-text/5 px-2 py-0.5 rounded-full">
@@ -864,27 +880,37 @@ export default function Today() {
                       setExpandedBriefId((prev) => (prev === intelligence[0].id ? null : intelligence[0].id))
                     }
                   />
-                  {/* Rest: visible for Gold, blurred for free */}
+                  {/* Rest: capped at 3 for Gold with expander, blurred for free */}
                   {intelligence.length > 1 && (
                     isGold ? (
-                      <motion.div
-                        variants={container}
-                        initial="hidden"
-                        animate="show"
-                        className="space-y-3"
-                      >
-                        {intelligence.slice(1).map((brief) => (
-                          <motion.div key={brief.id} variants={item}>
-                            <IntelligenceBriefCard
-                              brief={brief}
-                              expanded={expandedBriefId === brief.id}
-                              onToggle={() =>
-                                setExpandedBriefId((prev) => (prev === brief.id ? null : brief.id))
-                              }
-                            />
-                          </motion.div>
-                        ))}
-                      </motion.div>
+                      <>
+                        <motion.div
+                          variants={container}
+                          initial="hidden"
+                          animate="show"
+                          className="space-y-3"
+                        >
+                          {(showAllIntel ? intelligence.slice(1) : intelligence.slice(1, 3)).map((brief) => (
+                            <motion.div key={brief.id} variants={item}>
+                              <IntelligenceBriefCard
+                                brief={brief}
+                                expanded={expandedBriefId === brief.id}
+                                onToggle={() =>
+                                  setExpandedBriefId((prev) => (prev === brief.id ? null : brief.id))
+                                }
+                              />
+                            </motion.div>
+                          ))}
+                        </motion.div>
+                        {!showAllIntel && intelligence.length > 3 && (
+                          <button
+                            onClick={() => setShowAllIntel(true)}
+                            className="text-sm text-gold hover:text-gold-hover transition-colors font-medium mt-1"
+                          >
+                            See all {intelligence.length} briefs &rarr;
+                          </button>
+                        )}
+                      </>
                     ) : (
                       <BlurredContent upgradeText={`${intelligence.length - 1} more brief${intelligence.length - 1 !== 1 ? 's' : ''} today — Try Gold Free for 7 Days`}>
                         <div className="space-y-3">
@@ -936,35 +962,49 @@ export default function Today() {
               </div>
             </motion.div>
 
-            {/* AI Daily Brief — preview card with blurred content */}
+            {/* AI Daily Brief — Morning Brief card */}
             <motion.div variants={item}>
-              <h2 className="text-sm font-medium text-text-muted uppercase tracking-wider mb-3">AI Daily Brief</h2>
+              <h2 className="text-sm font-medium text-text-muted uppercase tracking-wider mb-3">Troy's Take</h2>
               {isGold ? (
-                <div className="rounded-xl bg-surface border border-border p-6 text-center">
-                  <div className="w-10 h-10 mx-auto rounded-full bg-gold/10 flex items-center justify-center mb-3">
-                    <svg className="w-5 h-5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z" />
-                    </svg>
+                briefLoading ? (
+                  <CardSkeleton />
+                ) : dailyBrief ? (
+                  <div className="rounded-xl bg-surface border-l-4 border-l-gold border border-border p-5">
+                    <div className="flex items-center gap-2 mb-3">
+                      <svg className="w-4 h-4 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
+                      </svg>
+                      <span className="text-xs font-medium text-gold">Troy's Take</span>
+                      <span className="text-[10px] text-text-muted ml-auto">
+                        {new Date(dailyBrief.generated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
+                    <div className="space-y-3">
+                      {dailyBrief.brief_text.split('\n\n').map((paragraph, i) => (
+                        <p key={i} className="text-sm text-text-secondary leading-relaxed">{paragraph}</p>
+                      ))}
+                    </div>
                   </div>
-                  <p className="text-sm font-medium text-text-secondary">AI-powered daily market analysis</p>
-                  <p className="text-xs text-text-muted mt-1">Personalized to your stack composition</p>
-                </div>
+                ) : (
+                  <div className="rounded-xl bg-surface border border-border p-6 text-center">
+                    <div className="w-10 h-10 mx-auto rounded-full bg-gold/10 flex items-center justify-center mb-3">
+                      <svg className="w-5 h-5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
+                      </svg>
+                    </div>
+                    <p className="text-sm font-medium text-text-secondary">Your first personalized brief arrives tomorrow at 6:30 AM</p>
+                    <p className="text-xs text-text-muted mt-1">AI-powered analysis tailored to your stack</p>
+                  </div>
+                )
               ) : (
                 <BlurredContent upgradeText="Unlock personalized briefings">
                   <div className="rounded-xl bg-surface border border-border p-4 space-y-2">
-                    <p className="text-xs font-semibold text-gold">Morning Brief — Feb 11</p>
+                    <p className="text-xs font-semibold text-gold">Troy's Take — Feb 11</p>
                     <p className="text-xs text-text-secondary leading-relaxed">Gold holds above $2,900 as markets digest inflation data. Silver futures rise on industrial demand outlook. COMEX registered inventories declined 2.3% this week, adding to the physical supply narrative...</p>
                     <p className="text-xs text-text-muted">Your portfolio gained $342 today driven by gold's rally...</p>
                   </div>
                 </BlurredContent>
               )}
-            </motion.div>
-
-            {/* AI Stack Advisor — visible UI, gated on interaction */}
-            <motion.div variants={item}>
-              <h2 className="text-sm font-medium text-text-muted uppercase tracking-wider mb-1">AI Stack Advisor</h2>
-              <p className="text-xs text-text-muted mb-3">Ask anything about your portfolio and the precious metals market</p>
-              <AdvisorChat />
             </motion.div>
 
             {/* AI Deal Finder — preview card with blurred content */}

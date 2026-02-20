@@ -364,11 +364,12 @@ export async function sendAdvisorMessage(
   userId: string,
   message: string,
   conversationHistory: AdvisorMessage[],
+  currentPage?: string,
 ): Promise<{ response: string }> {
   const response = await fetch(`${API_BASE_URL}/v1/advisor/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ userId, message, conversationHistory }),
+    body: JSON.stringify({ userId, message, conversationHistory, context: currentPage ? { currentPage } : undefined }),
   });
   if (!response.ok) {
     const data = await response.json().catch(() => ({}));

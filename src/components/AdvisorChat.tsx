@@ -76,7 +76,12 @@ function boldify(text: string): string {
   return text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
 }
 
-export function AdvisorChat() {
+interface AdvisorChatProps {
+  currentPage?: string;
+  isPanel?: boolean;
+}
+
+export function AdvisorChat({ currentPage, isPanel }: AdvisorChatProps = {}) {
   const { user } = useAuth();
   const { isGold, tier } = useSubscription();
   const [messages, setMessages] = useState<AdvisorMessage[]>([]);
@@ -108,7 +113,7 @@ export function AdvisorChat() {
     setLoading(true);
 
     try {
-      const { response } = await sendAdvisorMessage(user.id, text.trim(), messages);
+      const { response } = await sendAdvisorMessage(user.id, text.trim(), messages, currentPage);
       const assistantMsg: AdvisorMessage = { role: 'assistant', content: response };
       setMessages([...updatedMessages, assistantMsg]);
       const newCount = incrementUsage();
@@ -133,7 +138,7 @@ export function AdvisorChat() {
   };
 
   return (
-    <div className="flex flex-col rounded-xl bg-surface border border-border overflow-hidden" style={{ maxHeight: '500px' }}>
+    <div className={isPanel ? "h-full flex flex-col overflow-hidden" : "flex flex-col rounded-xl bg-surface border border-border overflow-hidden"} style={isPanel ? undefined : { maxHeight: '500px' }}>
       {/* Messages area */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3 min-h-[200px]">
         {messages.length === 0 && !loading ? (
@@ -186,7 +191,7 @@ export function AdvisorChat() {
                       <span className="w-1.5 h-1.5 rounded-full bg-gold animate-bounce" style={{ animationDelay: '150ms' }} />
                       <span className="w-1.5 h-1.5 rounded-full bg-gold animate-bounce" style={{ animationDelay: '300ms' }} />
                     </div>
-                    <span className="text-xs text-text-muted ml-1">Thinking...</span>
+                    <span className="text-xs text-text-muted ml-1">Troy is thinking...</span>
                   </div>
                 </div>
               </div>
@@ -215,7 +220,7 @@ export function AdvisorChat() {
             onClick={() => setShowPricing(true)}
             className="w-full py-2.5 text-sm text-gold hover:text-gold-hover hover:underline transition-all cursor-pointer opacity-90 hover:opacity-100 text-center"
           >
-            Try Gold Free for 7 Days to unlock AI Stack Advisor &rarr;
+            Try Gold Free for 7 Days to unlock Troy &rarr;
           </button>
         ) : (
           <>

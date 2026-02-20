@@ -5,6 +5,15 @@ import { useAuth } from '../contexts/AuthContext';
 import { useSubscription } from '../hooks/useSubscription';
 import { PricingModal } from './PricingModal';
 import { createCheckoutSession } from '../services/api';
+import { TroyChatButton } from './TroyChatButton';
+
+const PAGE_NAME_MAP: Record<string, string> = {
+  '/': 'Today',
+  '/portfolio': 'Portfolio',
+  '/analytics': 'Analytics',
+  '/tools': 'Tools',
+  '/settings': 'Settings',
+};
 
 const CHECKOUT_STORAGE_KEY = 'stg_checkout_redirect';
 const PRICE_IDS: Record<string, string> = {
@@ -124,6 +133,7 @@ export default function Layout() {
     navigate('/auth');
   };
 
+  const currentPage = PAGE_NAME_MAP[location.pathname] || 'App';
   const tierLabel = tier === 'lifetime' ? 'Lifetime' : tier === 'gold' ? 'Gold' : 'Free';
   const tierIsGold = tier === 'gold' || tier === 'lifetime';
 
@@ -422,6 +432,8 @@ export default function Layout() {
           ))}
         </ul>
       </nav>
+
+      <TroyChatButton currentPage={currentPage} />
 
       <PricingModal
         isOpen={showPricing}
