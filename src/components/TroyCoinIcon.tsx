@@ -20,44 +20,49 @@ export function TroyCoinIcon({ size = 20, className }: TroyCoinIconProps) {
         </radialGradient>
       </defs>
 
-      {/* Coin body */}
+      {/* 1. Coin body */}
       <circle cx="28" cy="28" r="26" fill="url(#troyCoinGrad)" />
 
-      {/* Raised rim — dark outer ring */}
-      <circle cx="28" cy="28" r="26" fill="none" stroke="#8A6914" strokeWidth="2" />
+      {/* 2. Dark ridge channel */}
+      <circle cx="28" cy="28" r="25" fill="none" stroke="#6B4E1B" strokeWidth="3" />
 
-      {/* Inner rim highlight — top-left arc for 3D */}
-      <path
-        d="M12 10 A22 22 0 0 1 46 14"
+      {/* 3. Reeded edge ticks */}
+      <circle
+        cx="28"
+        cy="28"
+        r="25"
         fill="none"
-        stroke="#FFE9A0"
+        stroke="#9A7B2D"
         strokeWidth="1.5"
-        strokeLinecap="round"
-        opacity="0.6"
+        strokeDasharray="1.5 1.5"
       />
 
-      {/* Embossed serif "T" — shadow */}
+      {/* 4. Outer rim stroke */}
+      <circle cx="28" cy="28" r="26" fill="none" stroke="#8B6914" strokeWidth="1.5" />
+
+      {/* 5. Embossed T — highlight (offset down) */}
+      <text
+        x="28"
+        y="37.5"
+        textAnchor="middle"
+        fontFamily="Georgia, 'Times New Roman', serif"
+        fontWeight="bold"
+        fontSize="34"
+        fill="#FFE0A0"
+        opacity="0.5"
+      >
+        T
+      </text>
+
+      {/* 5. Embossed T — face */}
       <text
         x="28"
         y="37"
         textAnchor="middle"
         fontFamily="Georgia, 'Times New Roman', serif"
         fontWeight="bold"
-        fontSize="30"
-        fill="#7A5F18"
-      >
-        T
-      </text>
-
-      {/* Embossed serif "T" — face */}
-      <text
-        x="28"
-        y="36"
-        textAnchor="middle"
-        fontFamily="Georgia, 'Times New Roman', serif"
-        fontWeight="bold"
-        fontSize="30"
-        fill="#FFF3D0"
+        fontSize="34"
+        fill="#7A5C1F"
       >
         T
       </text>
