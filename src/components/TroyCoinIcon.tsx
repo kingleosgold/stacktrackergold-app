@@ -26,10 +26,7 @@ for (let i = 0; i < TICK_COUNT; i++) {
   reedPath += `M${x1.toFixed(2)},${y1.toFixed(2)}L${x2.toFixed(2)},${y2.toFixed(2)}`;
 }
 
-// Serif T path — pure geometry, no text rendering (prevents wiggle on CSS scale transforms)
-// Traced as a bold serif T centered in 56×56, cap-height ~25px
-const T_PATH =
-  'M16.5,15.5H39.5V17.5L37,19.5H30.4V37.5L33.5,38.5V40.5H22.5V38.5L25.6,37.5V19.5H19L16.5,17.5Z';
+const FONT_SIZE = VB * 0.6; // 33.6 — matches mobile: size * 0.6
 
 export function TroyCoinIcon({ size = 20, className }: TroyCoinIconProps) {
   return (
@@ -40,6 +37,7 @@ export function TroyCoinIcon({ size = 20, className }: TroyCoinIconProps) {
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       className={className}
+      style={{ willChange: 'transform', transform: 'translateZ(0)' }}
     >
       <defs>
         <radialGradient id="troyCoinGrad" cx="45%" cy="40%" r="50%">
@@ -61,10 +59,33 @@ export function TroyCoinIcon({ size = 20, className }: TroyCoinIconProps) {
       <circle cx={HALF} cy={HALF} r={RIM_R} fill="none" stroke="#8B6914" strokeWidth={RIM_W} />
 
       {/* 5. Embossed T — highlight (offset 0.5px down) */}
-      <path d={T_PATH} fill="#FFE0A0" opacity={0.5} transform="translate(0,0.5)" />
+      <text
+        x={HALF}
+        y={HALF + 0.5}
+        textAnchor="middle"
+        dominantBaseline="central"
+        fontFamily="Georgia, 'Times New Roman', serif"
+        fontWeight="bold"
+        fontSize={FONT_SIZE}
+        fill="#FFE0A0"
+        opacity={0.5}
+      >
+        T
+      </text>
 
       {/* 5. Embossed T — face */}
-      <path d={T_PATH} fill="#7A5C1F" />
+      <text
+        x={HALF}
+        y={HALF}
+        textAnchor="middle"
+        dominantBaseline="central"
+        fontFamily="Georgia, 'Times New Roman', serif"
+        fontWeight="bold"
+        fontSize={FONT_SIZE}
+        fill="#7A5C1F"
+      >
+        T
+      </text>
     </svg>
   );
 }
