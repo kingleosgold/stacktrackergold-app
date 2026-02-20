@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AdvisorChat } from './AdvisorChat';
+import { TroyCoinIcon } from './TroyCoinIcon';
 
 interface TroyChatButtonProps {
   currentPage?: string;
@@ -22,12 +23,12 @@ export function TroyChatButton({ currentPage }: TroyChatButtonProps) {
       {/* Floating button */}
       <motion.button
         onClick={() => setOpen(true)}
-        className="fixed bottom-24 right-4 md:bottom-6 md:right-6 z-[60] w-14 h-14 rounded-full bg-gold text-background flex items-center justify-center shadow-lg shadow-gold/20"
+        className="fixed bottom-24 right-4 md:bottom-6 md:right-6 z-[60] w-14 h-14 rounded-full flex items-center justify-center shadow-lg shadow-gold/20"
         whileHover={{ scale: 1.08 }}
         whileTap={{ scale: 0.95 }}
         aria-label="Open Troy chat"
       >
-        <span className="text-xl font-bold leading-none">T</span>
+        <TroyCoinIcon size={56} />
       </motion.button>
 
       {/* Slide-in panel */}
@@ -55,9 +56,7 @@ export function TroyChatButton({ currentPage }: TroyChatButtonProps) {
               {/* Header */}
               <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-gold flex items-center justify-center">
-                    <span className="text-sm font-bold text-background leading-none">T</span>
-                  </div>
+                  <TroyCoinIcon size={32} />
                   <div>
                     <h2 className="text-sm font-semibold text-text">Troy</h2>
                     <p className="text-[11px] text-text-muted">Your Stack Analyst</p>

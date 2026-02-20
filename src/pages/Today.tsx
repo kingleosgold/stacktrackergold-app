@@ -12,6 +12,7 @@ import { METAL_COLORS, METAL_LABELS, METALS } from '../utils/constants';
 import { CardSkeleton } from '../components/Skeleton';
 import { BlurredContent } from '../components/BlurredContent';
 import { PricingModal } from '../components/PricingModal';
+import { TroyCoinIcon } from '../components/TroyCoinIcon';
 import type { Metal } from '../types/holding';
 
 const BANNER_DISMISS_KEY = 'stg_upgrade_banner_dismissed';
@@ -971,9 +972,7 @@ export default function Today() {
                 ) : dailyBrief ? (
                   <div className="rounded-xl bg-surface border-l-4 border-l-gold border border-border p-5">
                     <div className="flex items-center gap-2 mb-3">
-                      <svg className="w-4 h-4 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
-                      </svg>
+                      <TroyCoinIcon size={18} />
                       <span className="text-xs font-medium text-gold">Troy's Take</span>
                       <span className="text-[10px] text-text-muted ml-auto">
                         {new Date(dailyBrief.generated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -987,10 +986,8 @@ export default function Today() {
                   </div>
                 ) : (
                   <div className="rounded-xl bg-surface border border-border p-6 text-center">
-                    <div className="w-10 h-10 mx-auto rounded-full bg-gold/10 flex items-center justify-center mb-3">
-                      <svg className="w-5 h-5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
-                      </svg>
+                    <div className="w-10 h-10 mx-auto flex items-center justify-center mb-3">
+                      <TroyCoinIcon size={40} />
                     </div>
                     <p className="text-sm font-medium text-text-secondary">Your first personalized brief arrives tomorrow at 6:30 AM</p>
                     <p className="text-xs text-text-muted mt-1">AI-powered analysis tailored to your stack</p>
@@ -999,7 +996,7 @@ export default function Today() {
               ) : (
                 <BlurredContent upgradeText="Unlock personalized briefings">
                   <div className="rounded-xl bg-surface border border-border p-4 space-y-2">
-                    <p className="text-xs font-semibold text-gold">Troy's Take — Feb 11</p>
+                    <p className="text-xs font-semibold text-gold inline-flex items-center gap-1.5"><TroyCoinIcon size={16} />Troy's Take — Feb 11</p>
                     <p className="text-xs text-text-secondary leading-relaxed">Gold holds above $2,900 as markets digest inflation data. Silver futures rise on industrial demand outlook. COMEX registered inventories declined 2.3% this week, adding to the physical supply narrative...</p>
                     <p className="text-xs text-text-muted">Your portfolio gained $342 today driven by gold's rally...</p>
                   </div>

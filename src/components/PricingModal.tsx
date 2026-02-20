@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
 import { createCheckoutSession } from '../services/api';
 import type { SubscriptionTier } from '../hooks/useSubscription';
+import { TroyCoinIcon } from './TroyCoinIcon';
 
 interface PricingModalProps {
   isOpen: boolean;
@@ -23,11 +24,13 @@ const pricingOptions: { id: PricingOption; label: string; price: string; detail:
   { id: 'lifetime', label: 'Lifetime', price: '$199.99', detail: 'one-time', badge: 'Best Value', priceId: LIFETIME_PRICE_ID },
 ];
 
-const features = [
+type Feature = string | { icon: 'troy'; text: string };
+
+const features: Feature[] = [
   'AI Intelligence Feed — daily market analysis',
   'COMEX Vault Watch — warehouse inventory data',
-  'Troy — personal portfolio AI chat',
-  "Troy's Take — morning market briefing",
+  { icon: 'troy', text: 'Troy — personal portfolio AI chat' },
+  { icon: 'troy', text: "Troy's Take — morning market briefing" },
   'AI Deal Finder — best prices on bullion',
   'Spot Price History — full historical charts',
   'Advanced Analytics — portfolio deep dive',
@@ -183,14 +186,21 @@ export function PricingModal({ isOpen, onClose, currentTier }: PricingModalProps
                 <div className="mb-5">
                   <p className="text-xs font-medium text-text-muted uppercase tracking-wider mb-2.5">Everything in Gold</p>
                   <ul className="space-y-2">
-                    {features.map((feature) => (
-                      <li key={feature} className="flex items-start gap-2 text-sm">
-                        <svg className="w-4 h-4 mt-0.5 shrink-0 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                        </svg>
-                        <span className="text-text-secondary">{feature}</span>
-                      </li>
-                    ))}
+                    {features.map((feature) => {
+                      const text = typeof feature === 'string' ? feature : feature.text;
+                      const isTroy = typeof feature === 'object' && feature.icon === 'troy';
+                      return (
+                        <li key={text} className="flex items-start gap-2 text-sm">
+                          <svg className="w-4 h-4 mt-0.5 shrink-0 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                          </svg>
+                          <span className="text-text-secondary inline-flex items-center gap-1.5">
+                            {isTroy && <TroyCoinIcon size={16} />}
+                            {text}
+                          </span>
+                        </li>
+                      );
+                    })}
                   </ul>
                 </div>
 
