@@ -358,10 +358,14 @@ function VaultWatchPanel({
               </div>
               <div className="bg-surface-alt rounded-lg p-3">
                 <p className="text-[10px] text-text-muted uppercase tracking-wider mb-1">Ratio</p>
-                <p className="text-sm font-bold" style={{ color: ratioColor(latest.oversubscribed_ratio).color }}>
-                  {latest.oversubscribed_ratio.toFixed(2)}x{' '}
-                  <span className="text-[10px] font-normal">{ratioColor(latest.oversubscribed_ratio).label}</span>
-                </p>
+                {latest.oversubscribed_ratio > 0 ? (
+                  <p className="text-sm font-bold" style={{ color: ratioColor(latest.oversubscribed_ratio).color }}>
+                    {latest.oversubscribed_ratio.toFixed(2)}x{' '}
+                    <span className="text-[10px] font-normal">{ratioColor(latest.oversubscribed_ratio).label}</span>
+                  </p>
+                ) : (
+                  <p className="text-sm font-bold text-text-muted">N/A</p>
+                )}
               </div>
             </div>
 
@@ -410,7 +414,15 @@ export default function Today() {
   const { prices, loading: pricesLoading, lastUpdated } = useSpotPrices(60000);
   const { isGold, tier } = useSubscription();
   const { user } = useAuth();
-  const marketsClosed = prices?.marketsClosed === true;
+  // Markets closed: trust API flag, fallback to client-side weekend detection (US Eastern)
+  const marketsClosed = useMemo(() => {
+    if (prices?.marketsClosed === true) return true;
+    // Fallback: weekends in US Eastern time (COMEX closed Sat/Sun)
+    const now = new Date();
+    const eastern = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+    const day = eastern.getDay(); // 0=Sun, 6=Sat
+    return day === 0 || day === 6;
+  }, [prices]);
   const [sparklineRaw, setSparklineRaw] = useState<PriceLogEntry[]>([]);
   const [showPricing, setShowPricing] = useState(false);
 
@@ -601,7 +613,7 @@ export default function Today() {
         </div>
         {lastUpdated && (
           <p className="text-xs text-text-muted mt-1">
-            Live prices · Updated {lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            {marketsClosed ? 'Markets closed' : 'Live prices'} · Updated {lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           </p>
         )}
       </motion.div>
@@ -687,7 +699,7 @@ export default function Today() {
                       </>
                     )}
                   </div>
-                  {pulseNarrative && (
+                  {!marketsClosed && pulseNarrative && (
                     <p className="text-sm italic text-text-muted mt-2">{pulseNarrative}</p>
                   )}
                 </div>
@@ -725,7 +737,7 @@ export default function Today() {
         {/* ─── Live Spot (FREE) ────────────────────────────────── */}
         <motion.div variants={item}>
           <h2 className="text-sm font-medium text-text-muted uppercase tracking-wider mb-0.5">Live Spot</h2>
-          <p className="text-[11px] text-text-muted mb-3">Live spot prices sorted by today's biggest moves</p>
+          <p className="text-[11px] text-text-muted mb-3">{marketsClosed ? 'Last closing prices' : 'Live spot prices sorted by today\'s biggest moves'}</p>
           {isLoading ? (
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
               {[1, 2, 3, 4].map((i) => <CardSkeleton key={i} />)}
@@ -796,7 +808,7 @@ export default function Today() {
             {stats && stats.metalImpacts.length > 0 && (
               <motion.div variants={item}>
                 <h2 className="text-sm font-medium text-text-muted uppercase tracking-wider mb-0.5">Metal Movers</h2>
-                <p className="text-[11px] text-text-muted mb-3">How today's price moves affected your holdings</p>
+                <p className="text-[11px] text-text-muted mb-3">{marketsClosed ? 'Markets closed — no price movement today' : 'How today\'s price moves affected your holdings'}</p>
                 <div className="rounded-xl bg-surface border border-border divide-y divide-border">
                   {stats.metalImpacts.map((metal, idx) => {
                     const isPositive = metal.dailyImpact >= 0;
@@ -821,12 +833,18 @@ export default function Today() {
                           </div>
                         </div>
                         <div className="text-right">
-                          <p className={`text-sm font-semibold ${isPositive ? 'text-green' : 'text-red'}`}>
-                            {formatChange(metal.dailyImpact)}
-                          </p>
-                          <p className={`text-xs ${isPositive ? 'text-green/70' : 'text-red/70'}`}>
-                            {formatPercent(metal.changePercent)}
-                          </p>
+                          {marketsClosed ? (
+                            <p className="text-sm text-text-muted">No change (markets closed)</p>
+                          ) : (
+                            <>
+                              <p className={`text-sm font-semibold ${isPositive ? 'text-green' : 'text-red'}`}>
+                                {formatChange(metal.dailyImpact)}
+                              </p>
+                              <p className={`text-xs ${isPositive ? 'text-green/70' : 'text-red/70'}`}>
+                                {formatPercent(metal.changePercent)}
+                              </p>
+                            </>
+                          )}
                         </div>
                       </div>
                     );
@@ -859,12 +877,18 @@ export default function Today() {
                               </div>
                             </div>
                             <div className="text-right">
-                              <p className={`text-sm font-semibold ${isPositive ? 'text-green' : 'text-red'}`}>
-                                {formatChange(metal.dailyImpact)}
-                              </p>
-                              <p className={`text-xs ${isPositive ? 'text-green/70' : 'text-red/70'}`}>
-                                {formatPercent(metal.changePercent)}
-                              </p>
+                              {marketsClosed ? (
+                                <p className="text-sm text-text-muted">No change (markets closed)</p>
+                              ) : (
+                                <>
+                                  <p className={`text-sm font-semibold ${isPositive ? 'text-green' : 'text-red'}`}>
+                                    {formatChange(metal.dailyImpact)}
+                                  </p>
+                                  <p className={`text-xs ${isPositive ? 'text-green/70' : 'text-red/70'}`}>
+                                    {formatPercent(metal.changePercent)}
+                                  </p>
+                                </>
+                              )}
                             </div>
                           </div>
                         );
