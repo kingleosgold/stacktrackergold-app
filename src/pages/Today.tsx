@@ -69,19 +69,11 @@ function MiniSparkline({ data, color, id, label }: {
     return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
-  // Tight Y-axis domain: show actual volatility instead of flat line
   const values = data.map((d) => d.v).filter((v) => v > 0);
   const dataMin = Math.min(...values);
   const dataMax = Math.max(...values);
-  const range = dataMax - dataMin;
-  const mean = (dataMin + dataMax) / 2;
-  const minRange = mean * 0.005;
-  const effectiveRange = Math.max(range, minRange);
-  const padding = effectiveRange * 0.1;
-  const yDomain: [number, number] = [
-    (range < minRange ? mean - effectiveRange / 2 : dataMin) - padding,
-    (range < minRange ? mean + effectiveRange / 2 : dataMax) + padding,
-  ];
+  const padding = (dataMax - dataMin) * 0.1 || 1;
+  const yDomain: [number, number] = [dataMin - padding, dataMax + padding];
 
   return (
     <div className="relative w-16 h-8">
@@ -151,15 +143,8 @@ function PortfolioSparkline({ data, color, sparklineRaw }: {
   const values = chartData.map((d) => d.v).filter((v) => v > 0);
   const dataMin = Math.min(...values);
   const dataMax = Math.max(...values);
-  const range = dataMax - dataMin;
-  const mean = (dataMin + dataMax) / 2;
-  const minRange = mean * 0.01;
-  const effectiveRange = Math.max(range, minRange);
-  const padding = effectiveRange * 0.1;
-  const yDomain: [number, number] = [
-    (range < minRange ? mean - effectiveRange / 2 : dataMin) - padding,
-    (range < minRange ? mean + effectiveRange / 2 : dataMax) + padding,
-  ];
+  const padding = (dataMax - dataMin) * 0.1 || 1;
+  const yDomain: [number, number] = [dataMin - padding, dataMax + padding];
 
   const formatTime = (iso: string) => {
     if (!iso) return '';
@@ -706,7 +691,7 @@ export default function Today() {
                 {portfolioSparkline.length >= 2 && (
                   <PortfolioSparkline
                     data={portfolioSparkline}
-                    color={marketsClosed ? 'var(--color-text-muted)' : stats.totalDailyChange >= 0 ? 'var(--color-green)' : 'var(--color-red)'}
+                    color={stats.totalDailyChange >= 0 ? 'var(--color-green)' : 'var(--color-red)'}
                     sparklineRaw={sparklineRaw}
                   />
                 )}
