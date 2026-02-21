@@ -90,7 +90,7 @@ function WhatIfTool({ isGold }: { isGold: boolean }) {
 
   return (
     <div className="space-y-5">
-      <p className="text-xs text-text-muted">Drag sliders to see how price changes would affect your portfolio.</p>
+      <p className="text-xs text-text-muted">Drag sliders to see how price changes would affect your stack.</p>
       <div className="space-y-4">
         {METALS.map((metal) => {
           const currentPrice = prices?.[metal] || 0;
@@ -128,7 +128,7 @@ function WhatIfTool({ isGold }: { isGold: boolean }) {
         <BlurredContent show={isGold} upgradeText="Try Gold Free for 7 Days">
           <div className="mt-4 p-4 rounded-lg bg-background border border-border">
             <div className="flex items-center justify-between">
-              <span className="text-xs text-text-muted">Projected Portfolio Value</span>
+              <span className="text-xs text-text-muted">Projected Stack Value</span>
               <span className="text-lg font-bold">{formatCurrency(results.projectedTotal)}</span>
             </div>
             <div className="flex items-center justify-between mt-1">

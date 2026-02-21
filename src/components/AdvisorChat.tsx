@@ -11,7 +11,7 @@ const GOLD_COUNTER_THRESHOLD = 25; // Only show counter when Gold user has used 
 const STORAGE_KEY = 'advisor_usage';
 
 const SUGGESTED_QUESTIONS = [
-  'How is my portfolio performing?',
+  'How is my stack performing?',
   'Should I buy more silver or gold?',
   'Analyze my gold-to-silver ratio',
   'What if silver hits $100?',
@@ -148,7 +148,7 @@ export function AdvisorChat({ currentPage, isPanel }: AdvisorChatProps = {}) {
         {messages.length === 0 && !loading ? (
           <div className="space-y-3">
             <p className="text-xs text-text-muted text-center mb-3">
-              Ask anything about your portfolio and the precious metals market
+              Ask anything about your stack and the precious metals market
             </p>
             <div className="flex flex-wrap gap-2 justify-center">
               {SUGGESTED_QUESTIONS.map((q) => (
@@ -261,7 +261,7 @@ export function AdvisorChat({ currentPage, isPanel }: AdvisorChatProps = {}) {
               value={input}
               onChange={(e) => setInput(e.target.value.slice(0, 500))}
               onKeyDown={handleKeyDown}
-              placeholder={atLimit ? 'Daily limit reached' : 'Ask about your portfolio...'}
+              placeholder={atLimit ? 'Daily limit reached' : 'Ask about your stack...'}
               disabled={loading || atLimit}
               className="flex-1 px-3 py-2 rounded-lg bg-background border border-border text-sm focus:border-gold focus:outline-none disabled:opacity-50 placeholder:text-text-muted/50"
             />

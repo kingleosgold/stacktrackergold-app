@@ -100,6 +100,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     const { error } = await supabase.auth.signOut();
+    if (!error) {
+      // Clear app data on sign out (keep theme preference)
+      localStorage.removeItem('stacktracker_holdings');
+      localStorage.removeItem('stacktracker_pending_actions');
+      localStorage.removeItem('advisor_usage');
+      localStorage.removeItem('stg_upgrade_banner_dismissed');
+      localStorage.removeItem('stg_checkout_redirect');
+    }
     return { error };
   };
 

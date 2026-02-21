@@ -410,6 +410,7 @@ export default function Today() {
   const { prices, loading: pricesLoading, lastUpdated } = useSpotPrices(60000);
   const { isGold, tier } = useSubscription();
   const { user } = useAuth();
+  const marketsClosed = prices?.marketsClosed === true;
   const [sparklineRaw, setSparklineRaw] = useState<PriceLogEntry[]>([]);
   const [showPricing, setShowPricing] = useState(false);
 
@@ -616,7 +617,7 @@ export default function Today() {
             <div className="flex-1 min-w-0">
               <p className="text-sm text-text">
                 <span className="text-gold font-medium">Try Gold free for 7 days</span>
-                <span className="text-text-muted"> — AI intelligence, vault data, and portfolio analytics</span>
+                <span className="text-text-muted"> — AI intelligence, vault data, and stack analytics</span>
               </p>
             </div>
             <button
@@ -637,7 +638,20 @@ export default function Today() {
           </motion.div>
         )}
 
-        {/* ─── Portfolio Pulse (FREE) ──────────────────────────── */}
+        {/* ─── Markets Closed Banner ─────────────────────────── */}
+        {marketsClosed && (
+          <motion.div
+            variants={item}
+            className="rounded-xl border border-text-muted/15 bg-text/[0.03] px-4 py-3 flex items-center gap-3"
+          >
+            <svg className="w-4 h-4 shrink-0 text-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <p className="text-sm text-text-muted">Markets are closed. Prices reflect Friday's close.</p>
+          </motion.div>
+        )}
+
+        {/* ─── Stack Pulse (FREE) ─────────────────────────────── */}
         {isLoading ? (
           <CardSkeleton />
         ) : stats && holdings.length > 0 ? (
@@ -649,23 +663,29 @@ export default function Today() {
             <div className="relative">
               <div className="flex items-center gap-2 mb-1">
                 <div className="w-2 h-2 rounded-full bg-gold animate-pulse" />
-                <span className="text-xs font-medium text-gold uppercase tracking-wider">Portfolio Pulse</span>
+                <span className="text-xs font-medium text-gold uppercase tracking-wider">Stack Pulse</span>
               </div>
               <div className="flex items-end justify-between mt-4">
                 <div>
                   <p className="text-4xl font-bold tracking-tight">{formatCurrency(stats.totalValue)}</p>
                   <div className="flex items-center gap-3 mt-2">
-                    <span className={`text-sm font-medium ${stats.totalDailyChange >= 0 ? 'text-green' : 'text-red'}`}>
-                      {formatChange(stats.totalDailyChange)}
-                    </span>
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                      stats.totalDailyChange >= 0
-                        ? 'bg-green/10 text-green'
-                        : 'bg-red/10 text-red'
-                    }`}>
-                      {formatPercent(stats.totalDailyChangePercent)}
-                    </span>
-                    <span className="text-xs text-text-muted">today</span>
+                    {marketsClosed ? (
+                      <span className="text-sm font-medium text-text-muted">Markets Closed</span>
+                    ) : (
+                      <>
+                        <span className={`text-sm font-medium ${stats.totalDailyChange >= 0 ? 'text-green' : 'text-red'}`}>
+                          {formatChange(stats.totalDailyChange)}
+                        </span>
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                          stats.totalDailyChange >= 0
+                            ? 'bg-green/10 text-green'
+                            : 'bg-red/10 text-red'
+                        }`}>
+                          {formatPercent(stats.totalDailyChangePercent)}
+                        </span>
+                        <span className="text-xs text-text-muted">today</span>
+                      </>
+                    )}
                   </div>
                   {pulseNarrative && (
                     <p className="text-sm italic text-text-muted mt-2">{pulseNarrative}</p>
@@ -674,7 +694,7 @@ export default function Today() {
                 {portfolioSparkline.length >= 2 && (
                   <PortfolioSparkline
                     data={portfolioSparkline}
-                    color={stats.totalDailyChange >= 0 ? 'var(--color-green)' : 'var(--color-red)'}
+                    color={marketsClosed ? 'var(--color-text-muted)' : stats.totalDailyChange >= 0 ? 'var(--color-green)' : 'var(--color-red)'}
                     sparklineRaw={sparklineRaw}
                   />
                 )}
@@ -692,7 +712,7 @@ export default function Today() {
               </svg>
             </div>
             <h3 className="font-semibold text-text mb-1">Start Your Stack</h3>
-            <p className="text-sm text-text-muted mb-4">Add your first holding to see your portfolio pulse.</p>
+            <p className="text-sm text-text-muted mb-4">Add your first holding to see your stack pulse.</p>
             <a
               href="/portfolio"
               className="inline-block px-5 py-2.5 bg-gold text-background font-medium text-sm rounded-lg hover:bg-gold-hover transition-colors"
@@ -702,9 +722,9 @@ export default function Today() {
           </motion.div>
         ) : null}
 
-        {/* ─── Metal Movers (FREE) ────────────────────────────── */}
+        {/* ─── Live Spot (FREE) ────────────────────────────────── */}
         <motion.div variants={item}>
-          <h2 className="text-sm font-medium text-text-muted uppercase tracking-wider mb-0.5">Metal Movers</h2>
+          <h2 className="text-sm font-medium text-text-muted uppercase tracking-wider mb-0.5">Live Spot</h2>
           <p className="text-[11px] text-text-muted mb-3">Live spot prices sorted by today's biggest moves</p>
           {isLoading ? (
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -742,7 +762,9 @@ export default function Today() {
                     </div>
                     <p className="text-lg font-bold">{formatCurrency(price)}</p>
                     <div className="flex items-center gap-2 mt-1">
-                      {changeAmount !== 0 || changePercent !== 0 ? (
+                      {marketsClosed ? (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-text/5 text-text-muted">Closed</span>
+                      ) : changeAmount !== 0 || changePercent !== 0 ? (
                         <>
                           <span className={`text-xs font-medium ${isPositive ? 'text-green' : 'text-red'}`}>
                             {isPositive ? '+' : ''}{changeAmount.toFixed(2)}
@@ -770,10 +792,10 @@ export default function Today() {
           {/* LEFT COLUMN */}
           <div className="space-y-6">
 
-            {/* What Changed Today — first row free, rest blurred */}
+            {/* Metal Movers — first row free, rest blurred */}
             {stats && stats.metalImpacts.length > 0 && (
               <motion.div variants={item}>
-                <h2 className="text-sm font-medium text-text-muted uppercase tracking-wider mb-0.5">What Changed Today</h2>
+                <h2 className="text-sm font-medium text-text-muted uppercase tracking-wider mb-0.5">Metal Movers</h2>
                 <p className="text-[11px] text-text-muted mb-3">How today's price moves affected your holdings</p>
                 <div className="rounded-xl bg-surface border border-border divide-y divide-border">
                   {stats.metalImpacts.map((metal, idx) => {
@@ -857,7 +879,7 @@ export default function Today() {
             <motion.div variants={item}>
               <div className="flex items-center justify-between mb-3">
                 <div>
-                  <h2 className="text-sm font-medium text-text-muted uppercase tracking-wider mb-0.5">Market Intelligence</h2>
+                  <h2 className="text-sm font-medium text-text-muted uppercase tracking-wider mb-0.5 flex items-center gap-2"><TroyCoinIcon size={16} />Market Intelligence</h2>
                   <p className="text-[11px] text-text-muted">Curated precious metals news and analysis</p>
                 </div>
                 {intelligence.length > 0 && (
@@ -970,16 +992,16 @@ export default function Today() {
               </div>
             </motion.div>
 
-            {/* AI Daily Brief — Morning Brief card */}
+            {/* Your Daily Brief — Morning Brief card */}
             <motion.div variants={item}>
-              <h2 className="text-sm font-medium text-text-muted uppercase tracking-wider mb-3">Troy's Take</h2>
+              <h2 className="text-sm font-medium text-text-muted uppercase tracking-wider mb-3">Your Daily Brief</h2>
               {briefLoading ? (
                 <CardSkeleton />
               ) : dailyBrief ? (
                 <div className="rounded-xl bg-surface border-l-4 border-l-gold border border-border p-5">
                   <div className="flex items-center gap-2 mb-3">
                     <TroyCoinIcon size={18} />
-                    <span className="text-xs font-medium text-gold">Troy's Take</span>
+                    <span className="text-xs font-medium text-gold">Your Daily Brief</span>
                     <span className="text-[10px] text-text-muted ml-auto">
                       {new Date(dailyBrief.generated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </span>

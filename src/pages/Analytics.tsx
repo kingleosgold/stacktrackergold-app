@@ -521,7 +521,7 @@ export default function Analytics() {
             </svg>
           </div>
           <h3 className="text-lg font-semibold text-text mb-2">No Data Yet</h3>
-          <p className="text-sm text-text-muted">Add holdings to unlock portfolio analytics.</p>
+          <p className="text-sm text-text-muted">Add holdings to unlock stack analytics.</p>
         </div>
       </div>
     );
@@ -576,10 +576,10 @@ export default function Analytics() {
           </div>
         </BlurredContent>
 
-        {/* Portfolio Value Chart */}
+        {/* Stack Value Chart */}
         <motion.div variants={item} className="rounded-xl bg-surface border border-border p-5">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-semibold">Portfolio Value</h2>
+            <h2 className="text-sm font-semibold">Stack Value</h2>
             <div className="flex gap-1">
               {TIME_RANGES.map((range) => (
                 <button

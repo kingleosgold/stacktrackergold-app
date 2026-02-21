@@ -29,11 +29,11 @@ type Feature = string | { icon: 'troy'; text: string };
 const features: Feature[] = [
   'AI Intelligence Feed — daily market analysis',
   'COMEX Vault Watch — warehouse inventory data',
-  { icon: 'troy', text: 'Troy — personal portfolio AI chat' },
-  { icon: 'troy', text: "Troy's Take — morning market briefing" },
+  { icon: 'troy', text: 'Troy — personal stack AI chat' },
+  { icon: 'troy', text: "Your Daily Brief — morning market briefing" },
   'AI Deal Finder — best prices on bullion',
   'Spot Price History — full historical charts',
-  'Advanced Analytics — portfolio deep dive',
+  'Advanced Analytics — stack deep dive',
 ];
 
 export function PricingModal({ isOpen, onClose, currentTier }: PricingModalProps) {
@@ -118,7 +118,7 @@ export function PricingModal({ isOpen, onClose, currentTier }: PricingModalProps
 
             {/* Free plan note */}
             <div className="text-xs text-text-muted text-center mb-5 px-2">
-              Free plan includes portfolio tracking, live spot prices, and basic analytics.
+              Free plan includes stack tracking, live spot prices, and basic analytics.
             </div>
 
             {/* Error */}

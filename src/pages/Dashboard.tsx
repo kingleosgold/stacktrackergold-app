@@ -135,9 +135,9 @@ export default function Dashboard() {
       {/* Spot Prices */}
       <SpotPrices />
 
-      {/* Portfolio Summary */}
+      {/* Stack Summary */}
       <div className="p-6 rounded-lg bg-surface border border-border">
-        <h2 className="text-lg font-semibold mb-4 text-gold">Portfolio Value</h2>
+        <h2 className="text-lg font-semibold mb-4 text-gold">Stack Value</h2>
 
         {hasHoldings ? (
           <>
@@ -164,7 +164,7 @@ export default function Dashboard() {
           </>
         ) : (
           <p className="text-text-muted text-center py-8">
-            Add holdings to see your portfolio summary.
+            Add holdings to see your stack summary.
           </p>
         )}
       </div>
@@ -302,7 +302,7 @@ export default function Dashboard() {
       {!hasHoldings && (
         <div className="text-center py-12">
           <p className="text-text-muted mb-4">
-            Start tracking your precious metals portfolio.
+            Start tracking your precious metals stack.
           </p>
           <a
             href="/add"

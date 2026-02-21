@@ -9,6 +9,7 @@ import { useSubscription } from '../hooks/useSubscription';
 import { clearAllHoldings } from '../services/holdings';
 import { syncSubscription, createCustomerPortal, verifyStripeSession } from '../services/api';
 import { PricingModal } from '../components/PricingModal';
+import { ExternalLinkModal, useExternalLink } from '../components/ExternalLinkModal';
 
 const APP_VERSION = '2.0.0';
 
@@ -22,11 +23,12 @@ const item = {
   show: { opacity: 1, y: 0 },
 };
 
-function SettingsRow({ label, description, onClick, href, rightElement, danger }: {
+function SettingsRow({ label, description, onClick, href, onExternalClick, rightElement, danger }: {
   label: string;
   description?: string;
   onClick?: () => void;
   href?: string;
+  onExternalClick?: (url: string) => void;
   rightElement?: React.ReactNode;
   danger?: boolean;
 }) {
@@ -45,6 +47,14 @@ function SettingsRow({ label, description, onClick, href, rightElement, danger }
   );
 
   const cls = "flex items-center justify-between py-3.5 px-4 hover:bg-text/[0.02] transition-colors cursor-pointer";
+
+  if (href && onExternalClick) {
+    return (
+      <button onClick={() => onExternalClick(href)} className={`${cls} w-full text-left`}>
+        {content}
+      </button>
+    );
+  }
 
   if (href) {
     return (
@@ -77,11 +87,11 @@ function SettingsSection({ title, children }: { title: string; children: React.R
 function ThemeToggle({ theme, onChange }: { theme: Theme; onChange: (t: Theme) => void }) {
   const options: { value: Theme; label: string; icon: React.ReactNode }[] = [
     {
-      value: 'system',
-      label: 'System',
+      value: 'dark',
+      label: 'Dark',
       icon: (
         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0V12a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 12V5.25" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" />
         </svg>
       ),
     },
@@ -95,11 +105,11 @@ function ThemeToggle({ theme, onChange }: { theme: Theme; onChange: (t: Theme) =
       ),
     },
     {
-      value: 'dark',
-      label: 'Dark',
+      value: 'system',
+      label: 'Auto',
       icon: (
         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0V12a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 12V5.25" />
         </svg>
       ),
     },
@@ -180,9 +190,11 @@ export default function Settings() {
   const { tier, isTrial, trialEnd, refetch: refetchTier } = useSubscription();
   const [syncingSubscription, setSyncingSubscription] = useState(false);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [showPricing, setShowPricing] = useState(false);
   const [managingPortal, setManagingPortal] = useState(false);
+  const externalLink = useExternalLink();
 
   // Handle Stripe checkout success redirect — verify session to ensure tier updates
   useEffect(() => {
@@ -227,7 +239,7 @@ export default function Settings() {
 
   const handleSignOut = async () => {
     await signOut();
-    showStatus('Signed out successfully');
+    navigate('/auth');
   };
 
   const handleLinkGoogle = async () => {
@@ -348,7 +360,7 @@ export default function Settings() {
   const tierLabel = tier === 'free' ? 'Free' : tier === 'lifetime' ? 'Lifetime' : isTrial ? 'Gold Trial' : 'Gold';
   const trialDaysLeft = trialEnd ? Math.max(0, Math.ceil((new Date(trialEnd).getTime() - Date.now()) / (1000 * 60 * 60 * 24))) : 0;
   const tierDescription = tier === 'free'
-    ? 'Basic portfolio tracking'
+    ? 'Basic stack tracking'
     : tier === 'lifetime'
     ? 'Lifetime access to all features'
     : isTrial
@@ -486,7 +498,7 @@ export default function Settings() {
                   />
                 )}
 
-                <SettingsRow label="Sign Out" onClick={handleSignOut} />
+                <SettingsRow label="Sign Out" onClick={() => setShowSignOutConfirm(true)} danger />
               </>
             ) : (
               <SettingsRow
@@ -599,8 +611,8 @@ export default function Settings() {
             <p className="text-sm">Version</p>
             <p className="text-xs text-text-muted">{APP_VERSION}</p>
           </div>
-          <SettingsRow label="Privacy Policy" href="https://stacktrackergold.com/privacy" />
-          <SettingsRow label="Terms of Service" href="https://stacktrackergold.com/terms" />
+          <SettingsRow label="Privacy Policy" href="https://stacktrackergold.com/privacy" onExternalClick={externalLink.openExternal} />
+          <SettingsRow label="Terms of Service" href="https://stacktrackergold.com/terms" onExternalClick={externalLink.openExternal} />
         </SettingsSection>
 
         {/* Links */}
@@ -608,11 +620,13 @@ export default function Settings() {
           <SettingsRow
             label="Download for iOS"
             href="https://apps.apple.com/app/stack-tracker-gold/id6740512854"
+            onExternalClick={externalLink.openExternal}
             rightElement={<span className="text-gold text-xs font-medium">App Store</span>}
           />
           <SettingsRow
             label="Visit Website"
             href="https://stacktrackergold.com"
+            onExternalClick={externalLink.openExternal}
           />
         </SettingsSection>
 
@@ -621,6 +635,7 @@ export default function Settings() {
           <SettingsRow
             label="Contact Support"
             href="mailto:support@mancinitechsolutions.com"
+            onExternalClick={externalLink.openExternal}
           />
         </SettingsSection>
 
@@ -641,10 +656,26 @@ export default function Settings() {
         danger
       />
 
+      <ConfirmModal
+        isOpen={showSignOutConfirm}
+        onClose={() => setShowSignOutConfirm(false)}
+        onConfirm={handleSignOut}
+        title="Sign Out?"
+        message="You'll be signed out and local data will be cleared. Your holdings are safely stored in the cloud and will sync when you sign back in."
+        confirmText="Sign Out"
+        danger
+      />
+
       <PricingModal
         isOpen={showPricing}
         onClose={() => setShowPricing(false)}
         currentTier={tier}
+      />
+
+      <ExternalLinkModal
+        isOpen={externalLink.isOpen}
+        url={externalLink.pendingUrl || ''}
+        onClose={externalLink.close}
       />
     </div>
   );

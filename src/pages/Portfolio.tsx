@@ -128,7 +128,7 @@ export default function Portfolio() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Portfolio</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Stack</h1>
           {/* Sync status */}
           {(syncing || !isOnline || hasPendingChanges) && (
             <p className="text-xs mt-1">
@@ -250,7 +250,7 @@ export default function Portfolio() {
           </div>
           <h3 className="text-lg font-semibold text-text mb-2">No Holdings Yet</h3>
           <p className="text-sm text-text-muted mb-6 max-w-xs mx-auto">
-            Start building your precious metals portfolio by adding your first holding.
+            Start building your precious metals stack by adding your first holding.
           </p>
           <button
             onClick={() => setShowAddModal(true)}
