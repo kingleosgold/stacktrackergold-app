@@ -81,35 +81,14 @@ export async function fetchSpotPrices(): Promise<SpotPrices> {
 }
 
 /**
- * Check if a UTC timestamp falls within COMEX market-closed hours.
- * Markets close Friday 5 PM ET and reopen Sunday 6 PM ET.
- */
-function isDuringMarketClose(utcDate: Date): boolean {
-  // Convert UTC to US Eastern (handles DST automatically)
-  const eastern = new Date(utcDate.toLocaleString('en-US', { timeZone: 'America/New_York' }));
-  const day = eastern.getDay(); // 0=Sun, 6=Sat
-  const hour = eastern.getHours();
-
-  // Saturday: always closed
-  if (day === 6) return true;
-  // Friday after 5 PM ET: closed
-  if (day === 5 && hour >= 17) return true;
-  // Sunday before 6 PM ET: closed
-  if (day === 0 && hour < 18) return true;
-
-  return false;
-}
-
-/**
- * Fetch recent price data for sparklines — last 24 TRADING hours.
- * Filters out all data points during market-closed windows
- * (Friday 5PM ET → Sunday 6PM ET) so the weekend gap doesn't exist
- * in the chart. Fetches up to 4 days back to cover a full weekend.
+ * Fetch recent price data for sparklines.
+ * The backend already serves the correct data: live trading data during
+ * market hours, and Friday's last session data during closed hours.
+ * We just fetch, downsample to ~1 point/hour, and pass it through.
  */
 export async function fetchSparklineData(): Promise<PriceLogEntry[]> {
-  // Fetch 4 days back to ensure we have 24 trading hours even on Monday morning
   const since = new Date();
-  since.setDate(since.getDate() - 4);
+  since.setHours(since.getHours() - 24);
 
   const { data, error } = await supabase
     .from('price_log')
@@ -124,19 +103,9 @@ export async function fetchSparklineData(): Promise<PriceLogEntry[]> {
 
   if (!data || data.length === 0) return [];
 
-  // Filter out market-closed rows
-  const tradingData = data.filter((entry) => !isDuringMarketClose(new Date(entry.created_at)));
-
-  if (tradingData.length === 0) return [];
-
-  // Keep only the last 24 trading hours worth of data
-  const cutoff = new Date(tradingData[tradingData.length - 1].created_at);
-  cutoff.setHours(cutoff.getHours() - 24);
-  const recent = tradingData.filter((entry) => new Date(entry.created_at) >= cutoff);
-
   // Downsample to ~1 point per hour for sparklines
   const byHour = new Map<string, PriceLogEntry>();
-  for (const entry of recent) {
+  for (const entry of data) {
     const hourKey = entry.created_at.slice(0, 13); // YYYY-MM-DDTHH
     byHour.set(hourKey, entry);
   }
