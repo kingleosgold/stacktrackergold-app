@@ -399,15 +399,7 @@ export default function Today() {
   const { prices, loading: pricesLoading, lastUpdated } = useSpotPrices(60000);
   const { isGold, tier } = useSubscription();
   const { user } = useAuth();
-  // Markets closed: trust API flag, fallback to client-side weekend detection (US Eastern)
-  const marketsClosed = useMemo(() => {
-    if (prices?.marketsClosed === true) return true;
-    // Fallback: weekends in US Eastern time (COMEX closed Sat/Sun)
-    const now = new Date();
-    const eastern = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
-    const day = eastern.getDay(); // 0=Sun, 6=Sat
-    return day === 0 || day === 6;
-  }, [prices]);
+  const marketsClosed = prices?.marketsClosed === true;
   const [sparklineRaw, setSparklineRaw] = useState<PriceLogEntry[]>([]);
   const [showPricing, setShowPricing] = useState(false);
 
