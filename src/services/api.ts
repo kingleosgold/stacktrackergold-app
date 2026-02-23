@@ -1,5 +1,3 @@
-import { supabase } from '../lib/supabase';
-
 const API_BASE_URL = 'https://api.stacktrackergold.com';
 
 export interface MetalChange {
@@ -70,6 +68,7 @@ export async function fetchSpotPrices(): Promise<SpotPrices> {
     timestamp: raw.timestamp,
     source: raw.source,
     cacheAgeMinutes: 0,
+    marketsClosed: raw.marketsClosed ?? false,
     change: {
       gold: change.gold,
       silver: change.silver,
@@ -81,36 +80,41 @@ export async function fetchSpotPrices(): Promise<SpotPrices> {
 }
 
 /**
- * Fetch recent price data for sparklines.
- * The backend already serves the correct data: live trading data during
- * market hours, and Friday's last session data during closed hours.
- * We just fetch, downsample to ~1 point/hour, and pass it through.
+ * Fetch recent price data for sparklines from the stg-api endpoint.
+ * The backend handles weekend filtering, trading-hours-only data, and sampling.
+ * We transform the response to match the PriceLogEntry shape used by the UI.
  */
 export async function fetchSparklineData(): Promise<PriceLogEntry[]> {
-  const since = new Date();
-  since.setHours(since.getHours() - 24);
-
-  const { data, error } = await supabase
-    .from('price_log')
-    .select('id, timestamp, gold_price, silver_price, platinum_price, palladium_price, created_at')
-    .gte('created_at', since.toISOString())
-    .order('created_at', { ascending: true });
-
-  if (error) {
-    console.error('Error fetching sparkline data:', error);
+  const response = await fetch(`${API_BASE_URL}/v1/sparkline-24h`);
+  if (!response.ok) {
+    console.error('Failed to fetch sparkline data:', response.status);
     return [];
   }
 
-  if (!data || data.length === 0) return [];
+  const raw = await response.json();
+  if (!raw.success || !raw.sparklines || !raw.timestamps) return [];
 
-  // Downsample to ~1 point per hour for sparklines
-  const byHour = new Map<string, PriceLogEntry>();
-  for (const entry of data) {
-    const hourKey = entry.created_at.slice(0, 13); // YYYY-MM-DDTHH
-    byHour.set(hourKey, entry);
+  const { sparklines, timestamps } = raw as {
+    sparklines: { gold: number[]; silver: number[]; platinum: number[]; palladium: number[] };
+    timestamps: string[];
+  };
+
+  const len = timestamps.length;
+  const entries: PriceLogEntry[] = [];
+
+  for (let i = 0; i < len; i++) {
+    entries.push({
+      id: i,
+      timestamp: timestamps[i],
+      gold_price: sparklines.gold[i] ?? 0,
+      silver_price: sparklines.silver[i] ?? 0,
+      platinum_price: sparklines.platinum[i] ?? 0,
+      palladium_price: sparklines.palladium[i] ?? 0,
+      created_at: timestamps[i],
+    });
   }
 
-  return Array.from(byHour.values());
+  return entries;
 }
 
 // ─── Intelligence Feed ──────────────────────────────────────────
