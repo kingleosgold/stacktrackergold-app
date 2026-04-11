@@ -282,61 +282,13 @@ export default function ChatLayout() {
           </div>
         )}
 
-        {/* Scrollable middle region: recents + nav */}
-        <div className="flex-1 overflow-y-auto overflow-x-hidden">
-          {/* Recents (expanded only) */}
-          {!effectiveCollapsed && (
-            <div className="px-2 pb-2">
-              <div
-                className="px-3 pt-2 pb-1 text-[11px] uppercase"
-                style={{ color: 'rgba(148,163,184,0.5)', letterSpacing: '1px' }}
-              >
-                Recents
-              </div>
-              {!user && isConfigured ? (
-                <div className="px-3 py-2 text-[12px] text-[#94A3B8]">Sign in to see conversations</div>
-              ) : loadingList && recentConvs.length === 0 ? (
-                <div className="px-3 py-2 text-[12px] text-[#94A3B8]">Loading…</div>
-              ) : recentConvs.length === 0 ? (
-                <div className="px-3 py-2 text-[12px] text-[#94A3B8]">No conversations yet.</div>
-              ) : (
-                <ul className="space-y-0.5">
-                  {recentConvs.map((c) => {
-                    const isActive = c.id === activeConversationId;
-                    return (
-                      <li key={c.id}>
-                        <div
-                          className={`group relative flex items-center rounded-lg transition-colors ${
-                            isActive ? 'bg-[rgba(201,168,76,0.08)]' : 'hover:bg-white/[0.05]'
-                          }`}
-                        >
-                          <button
-                            onClick={() => { handleSelectConversation(c.id); closeIfMobile?.(); }}
-                            className={`flex-1 text-left px-3 py-1.5 text-[13px] truncate ${
-                              isActive ? 'text-[#C9A84C]' : 'text-[#94A3B8] hover:text-white'
-                            }`}
-                            title={c.title || 'Untitled'}
-                          >
-                            {truncate(c.title || 'Untitled', TITLE_MAX_LEN)}
-                          </button>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); handleDeleteConversation(c.id); }}
-                            className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 mr-1 text-[#94A3B8] hover:text-[#EF4444]"
-                            aria-label="Delete conversation"
-                          >
-                            <Trash2 size={13} />
-                          </button>
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </div>
-          )}
-
-          {/* Navigation section */}
-          <div className={effectiveCollapsed ? 'pt-2 pb-2' : 'px-2 pb-2 pt-1'}>
+        {/* Scrollable middle region: nav → recents → developer.
+            min-h-0 is critical — without it flex-1 children refuse to
+            shrink below their content height and the footer (collapse
+            toggle) gets pushed below the viewport. */}
+        <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden flex flex-col">
+          {/* Navigation section (primary tools) */}
+          <div className={effectiveCollapsed ? 'pt-2 pb-2 shrink-0' : 'px-2 pb-2 pt-1 shrink-0'}>
             {!effectiveCollapsed && (
               <div
                 className="px-3 pt-2 pb-1 text-[11px] uppercase"
@@ -354,8 +306,61 @@ export default function ChatLayout() {
             </ul>
           </div>
 
+          {/* Recents (expanded only, scrollable region inside the flex) */}
+          {!effectiveCollapsed && (
+            <div className="px-2 pb-2 flex-1 min-h-0 flex flex-col">
+              <div
+                className="px-3 pt-2 pb-1 text-[11px] uppercase shrink-0"
+                style={{ color: 'rgba(148,163,184,0.5)', letterSpacing: '1px' }}
+              >
+                Recents
+              </div>
+              <div className="flex-1 min-h-0 overflow-y-auto">
+                {!user && isConfigured ? (
+                  <div className="px-3 py-2 text-[12px] text-[#94A3B8]">Sign in to see conversations</div>
+                ) : loadingList && recentConvs.length === 0 ? (
+                  <div className="px-3 py-2 text-[12px] text-[#94A3B8]">Loading…</div>
+                ) : recentConvs.length === 0 ? (
+                  <div className="px-3 py-2 text-[12px] text-[#94A3B8]">No conversations yet.</div>
+                ) : (
+                  <ul className="space-y-0.5">
+                    {recentConvs.map((c) => {
+                      const isActive = c.id === activeConversationId;
+                      return (
+                        <li key={c.id}>
+                          <div
+                            className={`group relative flex items-center rounded-lg transition-colors ${
+                              isActive ? 'bg-[rgba(201,168,76,0.08)]' : 'hover:bg-white/[0.05]'
+                            }`}
+                          >
+                            <button
+                              onClick={() => { handleSelectConversation(c.id); closeIfMobile?.(); }}
+                              className={`flex-1 text-left px-3 py-1.5 text-[13px] truncate ${
+                                isActive ? 'text-[#C9A84C]' : 'text-[#94A3B8] hover:text-white'
+                              }`}
+                              title={c.title || 'Untitled'}
+                            >
+                              {truncate(c.title || 'Untitled', TITLE_MAX_LEN)}
+                            </button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleDeleteConversation(c.id); }}
+                              className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 mr-1 text-[#94A3B8] hover:text-[#EF4444]"
+                              aria-label="Delete conversation"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Developer section */}
-          <div className={effectiveCollapsed ? 'pt-2 pb-2' : 'px-2 pb-2 pt-1'}>
+          <div className={effectiveCollapsed ? 'pt-2 pb-2 shrink-0 mt-auto' : 'px-2 pb-2 pt-1 shrink-0'}>
             {!effectiveCollapsed && (
               <div
                 className="px-3 pt-2 pb-1 text-[11px] uppercase"
@@ -376,7 +381,7 @@ export default function ChatLayout() {
 
         {/* Footer region: settings, upgrade, user, collapse toggle */}
         <div
-          className="border-t"
+          className="border-t shrink-0"
           style={{ borderColor: 'rgba(201,168,76,0.1)' }}
         >
           {/* Settings */}
