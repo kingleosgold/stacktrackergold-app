@@ -6,6 +6,7 @@ import {
   getConversation,
   sendMessage,
   scanReceipt,
+  type TroyConversationSummary,
   type TroyMessage,
 } from '../services/troy';
 import { MessageBubble } from '../components/chat/MessageBubble';
@@ -28,6 +29,7 @@ const INLINE_SUGGESTIONS = ["Today's Brief", 'My stack', 'Ratio', 'Buying power'
 
 interface OutletCtx {
   refreshConversations: () => Promise<void>;
+  prependConversation: (conv: TroyConversationSummary) => void;
 }
 
 function fileToBase64(file: File): Promise<string> {
@@ -116,6 +118,10 @@ export default function Chat() {
         // Mark as locally-created BEFORE navigate so the load-effect skips
         // its initial GET and doesn't race the send below.
         locallyCreatedRef.current.add(conv.id);
+        // Optimistic Recents update — pin the conversation to the sidebar
+        // immediately. The server will auto-generate a title once the first
+        // message lands; the later refreshConversations() call picks it up.
+        ctx?.prependConversation(conv);
         navigate(`/c/${conv.id}`, { replace: true });
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Failed to start conversation');

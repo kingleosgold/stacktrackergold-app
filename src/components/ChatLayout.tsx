@@ -13,7 +13,6 @@ import {
   Menu,
   MessageSquare,
   Package,
-  Plus,
   Scale,
   Settings as SettingsIcon,
   Sparkles,
@@ -26,7 +25,6 @@ import { useAuth } from '../contexts/AuthContext';
 import { useSubscription } from '../hooks/useSubscription';
 import { PricingModal } from './PricingModal';
 import {
-  createConversation,
   deleteConversation,
   listConversations,
   type TroyConversationSummary,
@@ -183,19 +181,15 @@ export default function ChatLayout() {
     if (activeConversationId) refreshConversations();
   }, [activeConversationId, refreshConversations]);
 
-  const handleNewConversation = async () => {
-    if (!user) {
-      navigate('/auth');
-      return;
-    }
-    try {
-      const conv = await createConversation(user.id);
-      await refreshConversations();
-      navigate(`/c/${conv.id}`);
-    } catch {
-      navigate('/');
-    }
-  };
+  // Called by Chat.tsx the instant a conversation is created (first message).
+  // Prepends the new summary to the sidebar list so Recents reflects it
+  // before the server-side auto-title round-trip completes.
+  const prependConversation = useCallback((conv: TroyConversationSummary) => {
+    setConversations((prev) => {
+      if (prev.some((c) => c.id === conv.id)) return prev;
+      return [conv, ...prev];
+    });
+  }, []);
 
   const handleSelectConversation = (id: string) => {
     navigate(`/c/${id}`);
@@ -258,14 +252,6 @@ export default function ChatLayout() {
                 <ChevronsRight size={16} />
               </button>
             )}
-            <button
-              onClick={handleNewConversation}
-              title="New conversation"
-              className="w-9 h-9 flex items-center justify-center rounded-lg border border-[rgba(201,168,76,0.3)] text-[#C9A84C] hover:bg-[rgba(201,168,76,0.1)] transition-colors"
-              aria-label="New conversation"
-            >
-              <Plus size={16} />
-            </button>
           </div>
         ) : (
           <div className="flex items-center justify-between px-4 py-4">
@@ -279,26 +265,16 @@ export default function ChatLayout() {
                 Troy
               </span>
             </button>
-            <div className="flex items-center gap-1.5">
+            {!isMobileOverlay && (
               <button
-                onClick={() => { handleNewConversation(); closeIfMobile?.(); }}
-                title="New conversation"
-                className="w-7 h-7 flex items-center justify-center rounded-md border border-[rgba(201,168,76,0.3)] text-[#C9A84C] hover:bg-[rgba(201,168,76,0.1)] transition-colors"
-                aria-label="New conversation"
+                onClick={() => setCollapsed((v) => !v)}
+                title="Collapse sidebar"
+                aria-label="Collapse sidebar"
+                className="w-7 h-7 hidden lg:flex items-center justify-center rounded-md text-[#94A3B8] hover:text-white hover:bg-white/[0.05] transition-colors"
               >
-                <Plus size={14} />
+                <ChevronsLeft size={16} />
               </button>
-              {!isMobileOverlay && (
-                <button
-                  onClick={() => setCollapsed((v) => !v)}
-                  title="Collapse sidebar"
-                  aria-label="Collapse sidebar"
-                  className="w-7 h-7 hidden lg:flex items-center justify-center rounded-md text-[#94A3B8] hover:text-white hover:bg-white/[0.05] transition-colors"
-                >
-                  <ChevronsLeft size={16} />
-                </button>
-              )}
-            </div>
+            )}
           </div>
         )}
 
@@ -617,7 +593,7 @@ export default function ChatLayout() {
           collapsed ? 'lg:ml-[48px]' : 'lg:ml-[260px]'
         }`}
       >
-        <Outlet context={{ refreshConversations }} />
+        <Outlet context={{ refreshConversations, prependConversation }} />
       </main>
 
       <PricingModal isOpen={showPricing} onClose={() => setShowPricing(false)} currentTier={tier} />
