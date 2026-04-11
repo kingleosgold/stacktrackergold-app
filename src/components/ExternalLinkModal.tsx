@@ -39,7 +39,7 @@ export function ExternalLinkModal({ isOpen, url, onClose }: ExternalLinkModalPro
                   <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
                 </svg>
               </div>
-              <h3 className="text-base font-semibold">Leaving Stack Tracker</h3>
+              <h3 className="text-base font-semibold">Leaving TroyStack</h3>
             </div>
             <p className="text-sm text-text-muted mb-1">You're about to visit an external site:</p>
             <p className="text-sm text-gold font-medium break-all mb-5">{displayUrl}</p>
