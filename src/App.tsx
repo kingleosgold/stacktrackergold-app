@@ -1,33 +1,39 @@
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { SubscriptionProvider } from './hooks/useSubscription';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import Layout from './components/Layout';
+import ChatLayout from './components/ChatLayout';
+import Chat from './pages/Chat';
 import Today from './pages/Today';
 import Portfolio from './pages/Portfolio';
 import Analytics from './pages/Analytics';
-import Tools from './pages/Tools';
 import Settings from './pages/Settings';
 import Auth from './pages/Auth';
 import ResetPassword from './pages/ResetPassword';
+import StackSignal from './pages/StackSignal';
+import CompareDealers from './pages/CompareDealers';
 
 function App() {
   return (
     <AuthProvider>
       <SubscriptionProvider>
-      <ErrorBoundary>
-        <Routes>
-          <Route path="/auth" element={<Auth />} />
-          <Route path="/reset-password" element={<ResetPassword />} />
-          <Route path="/" element={<Layout />}>
-            <Route index element={<Today />} />
-            <Route path="portfolio" element={<Portfolio />} />
-            <Route path="analytics" element={<Analytics />} />
-            <Route path="tools" element={<Tools />} />
-            <Route path="settings" element={<Settings />} />
-          </Route>
-        </Routes>
-      </ErrorBoundary>
+        <ErrorBoundary>
+          <Routes>
+            <Route path="/auth" element={<Auth />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/" element={<ChatLayout />}>
+              <Route index element={<Chat />} />
+              <Route path="c/:conversationId" element={<Chat />} />
+              <Route path="dashboard" element={<Today />} />
+              <Route path="stack" element={<Portfolio />} />
+              <Route path="portfolio" element={<Navigate to="/stack" replace />} />
+              <Route path="analytics" element={<Analytics />} />
+              <Route path="signal" element={<StackSignal />} />
+              <Route path="dealers" element={<CompareDealers />} />
+              <Route path="settings" element={<Settings />} />
+            </Route>
+          </Routes>
+        </ErrorBoundary>
       </SubscriptionProvider>
     </AuthProvider>
   );

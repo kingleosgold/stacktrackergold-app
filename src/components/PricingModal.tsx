@@ -19,19 +19,20 @@ const LIFETIME_PRICE_ID = import.meta.env.VITE_STRIPE_GOLD_LIFETIME_PRICE_ID || 
 type PricingOption = 'monthly' | 'yearly' | 'lifetime';
 
 const pricingOptions: { id: PricingOption; label: string; price: string; detail: string; badge?: string; priceId: string }[] = [
-  { id: 'monthly', label: 'Monthly', price: '$9.99', detail: '/month', priceId: MONTHLY_PRICE_ID },
-  { id: 'yearly', label: 'Yearly', price: '$79.99', detail: '/year', badge: 'Save 33%', priceId: YEARLY_PRICE_ID },
-  { id: 'lifetime', label: 'Lifetime', price: '$199.99', detail: 'one-time', badge: 'Best Value', priceId: LIFETIME_PRICE_ID },
+  { id: 'monthly', label: 'Monthly', price: '$4.99', detail: '/month', priceId: MONTHLY_PRICE_ID },
+  { id: 'yearly', label: 'Yearly', price: '$39.99', detail: '/year', badge: 'Save 33%', priceId: YEARLY_PRICE_ID },
+  { id: 'lifetime', label: 'Lifetime', price: '$149.99', detail: 'one-time', badge: 'Best Value', priceId: LIFETIME_PRICE_ID },
 ];
 
 type Feature = string | { icon: 'troy'; text: string };
 
 const features: Feature[] = [
+  { icon: 'troy', text: 'Unlimited messages with Troy' },
+  'Up to 20 voice listens per day',
   'AI Intelligence Feed — daily market analysis',
   'COMEX Vault Watch — warehouse inventory data',
-  { icon: 'troy', text: 'Troy — personal stack AI chat' },
   { icon: 'troy', text: "Your Daily Brief — morning market briefing" },
-  'AI Deal Finder — best prices on bullion',
+  'Compare Dealers — affiliate pricing on bullion',
   'Spot Price History — full historical charts',
   'Advanced Analytics — stack deep dive',
 ];
@@ -118,7 +119,7 @@ export function PricingModal({ isOpen, onClose, currentTier }: PricingModalProps
 
             {/* Free plan note */}
             <div className="text-xs text-text-muted text-center mb-5 px-2">
-              Free plan includes stack tracking, live spot prices, and basic analytics.
+              Free plan includes stack tracking, live spot prices, 3 messages/day with Troy, and 1 voice listen/day.
             </div>
 
             {/* Error */}
