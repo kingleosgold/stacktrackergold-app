@@ -211,7 +211,30 @@ export interface StackSignalArticle {
   troy_commentary: string;
   published_at?: string;
   category?: string;
+  image_url?: string | null;
   sources?: Array<{ title?: string; url?: string } | string>;
+}
+
+// ─── Dealer Prices ──────────────────────────────────────────────
+
+export interface DealerPriceRow {
+  dealer: string;
+  product: string;
+  metal?: string;
+  price: number;
+  premium_over_spot?: number;
+  affiliate_url?: string;
+  url?: string;
+}
+
+export async function fetchDealerPrices(): Promise<DealerPriceRow[]> {
+  const res = await fetch(`${API_BASE_URL}/v1/dealer-prices`);
+  if (!res.ok) throw new Error(`Failed to fetch dealer prices: ${res.status}`);
+  const raw = await res.json();
+  const rows: DealerPriceRow[] = Array.isArray(raw)
+    ? raw
+    : raw.prices ?? raw.data ?? raw.rows ?? [];
+  return rows;
 }
 
 export async function fetchStackSignal(limit = 20): Promise<StackSignalArticle[]> {

@@ -44,6 +44,16 @@ function ArticleDetail({ article, onBack }: { article: StackSignalArticle; onBac
         Back to Stack Signal
       </button>
 
+      {article.image_url && (
+        <img
+          src={article.image_url}
+          alt=""
+          className="w-full rounded-xl mb-6 object-cover"
+          style={{ maxHeight: 400 }}
+          loading="lazy"
+        />
+      )}
+
       <div className="flex items-center gap-3 mb-3 text-xs text-[#94A3B8]">
         <CategoryBadge category={article.category} />
         <span>{formatDate(article.published_at)}</span>
@@ -133,21 +143,33 @@ export default function StackSignal() {
             <li key={article.id}>
               <button
                 onClick={() => setSelected(article)}
-                className="w-full text-left rounded-xl p-4 transition-colors border"
+                className="w-full text-left rounded-xl overflow-hidden transition-colors border flex flex-col sm:flex-row"
                 style={{ background: '#141B2D', borderColor: 'rgba(201,168,76,0.1)' }}
               >
-                <div className="flex items-center gap-3 mb-2 text-xs text-[#94A3B8]">
-                  <CategoryBadge category={article.category} />
-                  {article.published_at && <span>{formatDate(article.published_at)}</span>}
-                </div>
-                <h2 className="text-[15px] font-semibold text-white mb-2 leading-snug">
-                  {article.title}
-                </h2>
-                <p className="text-sm text-[#94A3B8] leading-relaxed">
-                  {firstLines(article.troy_commentary, 3)}
-                </p>
-                <div className="mt-3 text-xs font-semibold" style={{ color: '#C9A84C' }}>
-                  Read more →
+                {article.image_url && (
+                  <div className="sm:w-40 sm:shrink-0 sm:self-stretch">
+                    <img
+                      src={article.image_url}
+                      alt=""
+                      className="w-full h-40 sm:h-full object-cover"
+                      loading="lazy"
+                    />
+                  </div>
+                )}
+                <div className="flex-1 min-w-0 p-4">
+                  <div className="flex items-center gap-3 mb-2 text-xs text-[#94A3B8]">
+                    <CategoryBadge category={article.category} />
+                    {article.published_at && <span>{formatDate(article.published_at)}</span>}
+                  </div>
+                  <h2 className="text-[15px] font-semibold text-white mb-2 leading-snug">
+                    {article.title}
+                  </h2>
+                  <p className="text-sm text-[#94A3B8] leading-relaxed">
+                    {firstLines(article.troy_commentary, 3)}
+                  </p>
+                  <div className="mt-3 text-xs font-semibold" style={{ color: '#C9A84C' }}>
+                    Read more →
+                  </div>
                 </div>
               </button>
             </li>

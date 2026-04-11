@@ -523,13 +523,33 @@ export default function ChatLayout() {
 
   return (
     <div className="min-h-screen" style={{ background: '#0A0A0E' }}>
-      {/* Desktop sidebar (fixed, width animated) */}
+      {/* Desktop sidebar (fixed, width animated)
+          Clicks on empty sidebar space expand when collapsed —
+          inner buttons use stopPropagation via onClickCapture below. */}
       <aside
-        className="hidden lg:flex fixed top-0 left-0 h-screen z-40 transition-[width] duration-200 ease-in-out"
+        className={`hidden lg:flex fixed top-0 left-0 h-screen z-40 transition-[width] duration-200 ease-in-out ${
+          collapsed ? 'cursor-pointer' : ''
+        }`}
         style={{
           width: sidebarWidth,
           background: '#0B1120',
           borderRight: '1px solid rgba(201,168,76,0.1)',
+        }}
+        onClick={(e) => {
+          if (!collapsed) return;
+          // Only expand if the click landed on the aside/body chrome,
+          // not on a real control (button/a/input). Walk up from the
+          // target until we hit either an interactive element or the
+          // aside itself.
+          let el = e.target as HTMLElement | null;
+          while (el && el !== e.currentTarget) {
+            const tag = el.tagName;
+            if (tag === 'BUTTON' || tag === 'A' || tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') {
+              return;
+            }
+            el = el.parentElement;
+          }
+          setCollapsed(false);
         }}
       >
         {renderSidebarBody(false)}
