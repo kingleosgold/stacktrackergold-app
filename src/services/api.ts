@@ -430,7 +430,7 @@ export async function generateApiKey(
   accessToken: string,
   name?: string,
 ): Promise<GeneratedApiKey> {
-  const data = await apiKeyRequest<{ key?: GeneratedApiKey } & GeneratedApiKey>(
+  const data = await apiKeyRequest<Record<string, unknown>>(
     '/v1/api-keys/generate',
     accessToken,
     {
@@ -438,8 +438,18 @@ export async function generateApiKey(
       body: JSON.stringify(name ? { name } : {}),
     },
   );
-  // Server may return { key: {...} } or flat
-  return data.key ?? (data as unknown as GeneratedApiKey);
+
+  // Server returns { id, api_key, key, tier, rate_limit } — api_key and key
+  // both hold the raw key string. Older builds returned { key: {...} } as a
+  // wrapper object; handle both shapes defensively.
+  if (data.key && typeof data.key === 'object' && !Array.isArray(data.key)) {
+    return data.key as unknown as GeneratedApiKey;
+  }
+  const rawKey = (data.api_key || data.key) as string | undefined;
+  return {
+    ...(data as unknown as GeneratedApiKey),
+    api_key: rawKey ?? '',
+  };
 }
 
 export async function revokeApiKey(accessToken: string, id: string): Promise<void> {

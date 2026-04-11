@@ -1,4 +1,4 @@
-const API_BASE_URL = 'https://api.stacktrackergold.com';
+const API_BASE_URL = 'https://api.troystack.ai';
 
 export interface TroyMessage {
   id: string;

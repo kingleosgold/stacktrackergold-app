@@ -94,14 +94,20 @@ interface RevealKeyModalProps {
 function RevealKeyModal({ generatedKey, onClose }: RevealKeyModalProps) {
   const [copied, setCopied] = useState(false);
 
+  // Server returns both `api_key` and `key` — accept either so future shape changes don't break copy
+  const rawKey =
+    generatedKey.api_key ||
+    (generatedKey as unknown as { key?: string }).key ||
+    '';
+
   const copy = async () => {
     try {
-      await navigator.clipboard.writeText(generatedKey.api_key);
+      await navigator.clipboard.writeText(rawKey);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
       // fallback
-      window.prompt('Copy your API key:', generatedKey.api_key);
+      window.prompt('Copy your API key:', rawKey);
     }
   };
 
@@ -141,7 +147,7 @@ function RevealKeyModal({ generatedKey, onClose }: RevealKeyModalProps) {
             className="rounded-md border p-3 font-mono text-[12px] break-all text-white"
             style={{ background: '#0B1120', borderColor: 'rgba(201,168,76,0.18)' }}
           >
-            {generatedKey.api_key}
+            {rawKey}
           </div>
 
           <div className="mt-3 flex items-center justify-between text-[11px] text-[#94A3B8]">
