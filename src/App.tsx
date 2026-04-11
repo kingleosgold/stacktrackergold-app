@@ -14,6 +14,7 @@ import StackSignal from './pages/StackSignal';
 import CompareDealers from './pages/CompareDealers';
 import VaultWatch from './pages/VaultWatch';
 import SpeculationCalculator from './pages/SpeculationCalculator';
+import JunkSilver from './pages/JunkSilver';
 import Developers from './pages/Developers';
 import DeveloperKeys from './pages/DeveloperKeys';
 
@@ -36,6 +37,7 @@ function App() {
               <Route path="vault" element={<VaultWatch />} />
               <Route path="dealers" element={<CompareDealers />} />
               <Route path="speculate" element={<SpeculationCalculator />} />
+              <Route path="junk-silver" element={<JunkSilver />} />
               <Route path="developers" element={<Developers />} />
               <Route path="developers/keys" element={<DeveloperKeys />} />
               <Route path="settings" element={<Settings />} />

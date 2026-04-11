@@ -1,9 +1,30 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate, useParams } from 'react-router-dom';
+import {
+  BarChart2,
+  Building2,
+  ChevronsLeft,
+  ChevronsRight,
+  Coins,
+  FileText,
+  Gem,
+  Key,
+  LogOut,
+  Menu,
+  MessageSquare,
+  Package,
+  Plus,
+  Scale,
+  Settings as SettingsIcon,
+  Sparkles,
+  TrendingUp,
+  Trash2,
+  X,
+  Zap,
+} from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useSubscription } from '../hooks/useSubscription';
 import { PricingModal } from './PricingModal';
-import { ConversationList } from './chat/ConversationList';
 import {
   createConversation,
   deleteConversation,
@@ -11,91 +32,94 @@ import {
   type TroyConversationSummary,
 } from '../services/troy';
 
-const SIDEBAR_WIDTH = 260;
+const EXPANDED_WIDTH = 260;
+const COLLAPSED_WIDTH = 60;
+const COLLAPSED_STORAGE_KEY = 'troystack_sidebar_collapsed';
+const MAX_RECENT_CONVERSATIONS = 8;
+const TITLE_MAX_LEN = 30;
 
 interface NavItemDef {
   to: string;
   label: string;
   icon: React.ReactNode;
+  end?: boolean;
 }
 
-const ICON = {
-  chat: (
-    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
-    </svg>
-  ),
-  stack: (
-    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375" />
-    </svg>
-  ),
-  analytics: (
-    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
-    </svg>
-  ),
-  signal: (
-    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
-    </svg>
-  ),
-  vault: (
-    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
-    </svg>
-  ),
-  dealers: (
-    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" />
-    </svg>
-  ),
-  speculate: (
-    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 15.75l-2.489-2.489m0 0a3.375 3.375 0 10-4.773-4.773 3.375 3.375 0 004.774 4.774zM21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-    </svg>
-  ),
-  docs: (
-    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
-    </svg>
-  ),
-  key: (
-    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" />
-    </svg>
-  ),
-  settings: (
-    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" />
-      <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-    </svg>
-  ),
-  signOut: (
-    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
-    </svg>
-  ),
-};
-
 const PRIMARY_NAV: NavItemDef[] = [
-  { to: '/', label: 'Troy Chat', icon: ICON.chat },
-  { to: '/stack', label: 'My Stack', icon: ICON.stack },
-  { to: '/analytics', label: 'Analytics', icon: ICON.analytics },
-  { to: '/signal', label: 'Stack Signal', icon: ICON.signal },
-  { to: '/vault', label: 'Vault Watch', icon: ICON.vault },
-  { to: '/dealers', label: 'Compare Dealers', icon: ICON.dealers },
-  { to: '/speculate', label: 'Speculation Calculator', icon: ICON.speculate },
+  { to: '/', label: 'Troy Chat', icon: <MessageSquare size={18} />, end: true },
+  { to: '/stack', label: 'My Stack', icon: <Package size={18} /> },
+  { to: '/analytics', label: 'Analytics', icon: <BarChart2 size={18} /> },
+  { to: '/signal', label: 'Stack Signal', icon: <Zap size={18} /> },
+  { to: '/vault', label: 'Vault Watch', icon: <Building2 size={18} /> },
+  { to: '/dealers', label: 'Compare Dealers', icon: <Scale size={18} /> },
+  { to: '/speculate', label: 'Speculation', icon: <TrendingUp size={18} /> },
+  { to: '/junk-silver', label: 'Junk Silver', icon: <Coins size={18} /> },
 ];
 
 const DEVELOPER_NAV: NavItemDef[] = [
-  { to: '/developers', label: 'API Documentation', icon: ICON.docs },
-  { to: '/developers/keys', label: 'API Keys', icon: ICON.key },
+  { to: '/developers', label: 'API Docs', icon: <FileText size={18} /> },
+  { to: '/developers/keys', label: 'API Keys', icon: <Key size={18} /> },
 ];
 
-const FOOTER_NAV: NavItemDef[] = [
-  { to: '/settings', label: 'Settings', icon: ICON.settings },
-];
+function truncate(s: string, n: number): string {
+  if (!s) return 'Untitled';
+  return s.length > n ? s.slice(0, n - 1).trimEnd() + '…' : s;
+}
+
+function readCollapsed(): boolean {
+  try {
+    return localStorage.getItem(COLLAPSED_STORAGE_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+function writeCollapsed(v: boolean) {
+  try {
+    localStorage.setItem(COLLAPSED_STORAGE_KEY, String(v));
+  } catch {
+    // ignore
+  }
+}
+
+interface SidebarNavLinkProps {
+  item: NavItemDef;
+  collapsed: boolean;
+  onNavigate?: () => void;
+}
+
+function SidebarNavLink({ item, collapsed, onNavigate }: SidebarNavLinkProps) {
+  return (
+    <NavLink
+      to={item.to}
+      end={item.end}
+      onClick={onNavigate}
+      title={collapsed ? item.label : undefined}
+      className={({ isActive }) =>
+        [
+          'relative flex items-center rounded-lg text-[13px] font-medium transition-all duration-200',
+          collapsed ? 'justify-center px-0 py-2.5 mx-1.5' : 'gap-3 px-3 py-2',
+          isActive
+            ? 'text-[#C9A84C] bg-[rgba(201,168,76,0.08)]'
+            : 'text-[#94A3B8] hover:text-white hover:bg-white/[0.05]',
+        ].join(' ')
+      }
+    >
+      {({ isActive }) => (
+        <>
+          {isActive && (
+            <span
+              className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full"
+              style={{ background: '#C9A84C' }}
+            />
+          )}
+          <span className="shrink-0 flex items-center justify-center">{item.icon}</span>
+          {!collapsed && <span className="truncate">{item.label}</span>}
+        </>
+      )}
+    </NavLink>
+  );
+}
 
 export default function ChatLayout() {
   const { user, isConfigured, signOut } = useAuth();
@@ -105,38 +129,25 @@ export default function ChatLayout() {
   const params = useParams<{ conversationId?: string }>();
   const activeConversationId = params.conversationId ?? null;
 
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState<boolean>(readCollapsed);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const [conversations, setConversations] = useState<TroyConversationSummary[]>([]);
   const [loadingList, setLoadingList] = useState(false);
   const [showPricing, setShowPricing] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
-  const refreshConversations = useCallback(async () => {
-    if (!user) {
-      setConversations([]);
-      return;
-    }
-    setLoadingList(true);
-    try {
-      const list = await listConversations(user.id);
-      setConversations(list);
-    } catch {
-      // silent — the list just won't populate
-    } finally {
-      setLoadingList(false);
-    }
-  }, [user]);
-
+  // Persist collapsed state
   useEffect(() => {
-    refreshConversations();
-  }, [refreshConversations]);
+    writeCollapsed(collapsed);
+  }, [collapsed]);
 
-  // Re-fetch when switching conversations (covers new-conv creation from chat page)
+  // Auto-close mobile drawer on route change
   useEffect(() => {
-    if (activeConversationId) refreshConversations();
-  }, [activeConversationId, refreshConversations]);
+    setMobileOpen(false);
+  }, [location.pathname]);
 
+  // Close user menu on outside click
   useEffect(() => {
     if (!userMenuOpen) return;
     const h = (e: MouseEvent) => {
@@ -148,9 +159,29 @@ export default function ChatLayout() {
     return () => document.removeEventListener('mousedown', h);
   }, [userMenuOpen]);
 
+  const refreshConversations = useCallback(async () => {
+    if (!user) {
+      setConversations([]);
+      return;
+    }
+    setLoadingList(true);
+    try {
+      const list = await listConversations(user.id);
+      setConversations(list);
+    } catch {
+      // silent — list simply won't populate
+    } finally {
+      setLoadingList(false);
+    }
+  }, [user]);
+
   useEffect(() => {
-    setSidebarOpen(false);
-  }, [location.pathname]);
+    refreshConversations();
+  }, [refreshConversations]);
+
+  useEffect(() => {
+    if (activeConversationId) refreshConversations();
+  }, [activeConversationId, refreshConversations]);
 
   const handleNewConversation = async () => {
     if (!user) {
@@ -162,7 +193,6 @@ export default function ChatLayout() {
       await refreshConversations();
       navigate(`/c/${conv.id}`);
     } catch {
-      // If creation fails, just go to the empty chat state
       navigate('/');
     }
   };
@@ -191,235 +221,373 @@ export default function ChatLayout() {
   const tierLabel = tier === 'lifetime' ? 'Lifetime' : tier === 'gold' ? 'Gold' : 'Free';
   const userInitial = (user?.email?.[0] || 'U').toUpperCase();
 
-  const sidebarContent = useMemo(() => (
-    <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="p-4 flex items-center gap-2.5">
-        <img src="/troy-avatar.png" alt="Troy" className="w-7 h-7 rounded-full" />
-        <span className="text-sm font-semibold text-[#DAA520] flex-1">Troy</span>
-        <button
-          onClick={handleNewConversation}
-          className="flex items-center gap-1 px-2 py-1 rounded-md text-[11px] text-[#DAA520] border border-[#DAA520]/30 hover:bg-[#DAA520]/10 transition-colors"
-          aria-label="New conversation"
+  const recentConvs = [...conversations]
+    .sort((a, b) => {
+      const ta = new Date(a.updated_at ?? a.created_at).getTime();
+      const tb = new Date(b.updated_at ?? b.created_at).getTime();
+      return tb - ta;
+    })
+    .slice(0, MAX_RECENT_CONVERSATIONS);
+
+  const sidebarWidth = collapsed ? COLLAPSED_WIDTH : EXPANDED_WIDTH;
+
+  // --- Sidebar inner content (shared between desktop rail + mobile overlay) ---
+  const renderSidebarBody = (isMobileOverlay: boolean) => {
+    const effectiveCollapsed = isMobileOverlay ? false : collapsed;
+    const closeIfMobile = isMobileOverlay ? () => setMobileOpen(false) : undefined;
+
+    return (
+      <div className="flex flex-col h-full">
+        {/* Brand header */}
+        <div
+          className={`flex items-center ${
+            effectiveCollapsed ? 'justify-center px-0 py-4' : 'justify-between px-4 py-4'
+          }`}
         >
-          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-          </svg>
-          New
-        </button>
-      </div>
-
-      {/* Conversations */}
-      <div className="flex-1 overflow-y-auto px-2 py-1">
-        <div className="px-3 py-1 text-[10px] uppercase tracking-wider text-text-muted">Recents</div>
-        <ConversationList
-          conversations={conversations}
-          activeId={activeConversationId}
-          onSelect={handleSelectConversation}
-          onDelete={handleDeleteConversation}
-          loading={loadingList}
-        />
-      </div>
-
-      {/* Nav items — primary tools */}
-      <div className="border-t border-white/5 px-2 py-2">
-        <ul className="space-y-0.5">
-          {PRIMARY_NAV.map((item) => (
-            <li key={item.to}>
-              <NavLink
-                to={item.to}
-                end={item.to === '/'}
-                className={({ isActive }) =>
-                  `flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
-                    isActive ? 'text-[#DAA520] bg-white/[0.05]' : 'text-text-secondary hover:bg-white/[0.03] hover:text-text'
-                  }`
-                }
-              >
-                {item.icon}
-                {item.label}
-              </NavLink>
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      {/* Developer section */}
-      <div className="border-t border-white/5 px-2 py-2">
-        <div className="px-3 pt-1 pb-1.5 text-[10px] uppercase tracking-wider text-text-muted">Developer</div>
-        <ul className="space-y-0.5">
-          {DEVELOPER_NAV.map((item) => (
-            <li key={item.to}>
-              <NavLink
-                to={item.to}
-                className={({ isActive }) =>
-                  `flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
-                    isActive ? 'text-[#DAA520] bg-white/[0.05]' : 'text-text-secondary hover:bg-white/[0.03] hover:text-text'
-                  }`
-                }
-              >
-                {item.icon}
-                {item.label}
-              </NavLink>
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      {/* Footer nav: Settings + Sign Out */}
-      <div className="border-t border-white/5 px-2 py-2">
-        <ul className="space-y-0.5">
-          {FOOTER_NAV.map((item) => (
-            <li key={item.to}>
-              <NavLink
-                to={item.to}
-                className={({ isActive }) =>
-                  `flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
-                    isActive ? 'text-[#DAA520] bg-white/[0.05]' : 'text-text-secondary hover:bg-white/[0.03] hover:text-text'
-                  }`
-                }
-              >
-                {item.icon}
-                {item.label}
-              </NavLink>
-            </li>
-          ))}
-          {isConfigured && user && (
-            <li>
-              <button
-                onClick={handleSignOut}
-                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-text-secondary hover:bg-[#EF4444]/10 hover:text-[#EF4444] transition-colors"
-              >
-                {ICON.signOut}
-                Sign Out
-              </button>
-            </li>
-          )}
-        </ul>
-      </div>
-
-      {/* Upgrade CTA */}
-      {!isGold && (
-        <div className="px-3 pb-2">
           <button
-            onClick={() => setShowPricing(true)}
-            className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-[#DAA520]/30 bg-[#DAA520]/5 text-[#DAA520] text-xs font-semibold hover:bg-[#DAA520]/10 transition-colors"
+            onClick={() => { navigate('/'); closeIfMobile?.(); }}
+            className="flex items-center gap-2.5"
+            aria-label="TroyStack home"
           >
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
-            </svg>
-            Upgrade to Gold
-          </button>
-        </div>
-      )}
-
-      {/* User row */}
-      <div className="border-t border-white/5 p-3 relative" ref={userMenuRef}>
-        {userMenuOpen && user && (
-          <div className="absolute bottom-full left-3 right-3 mb-2 bg-[#141419] border border-white/10 rounded-lg shadow-xl overflow-hidden">
-            <div className="px-3 py-3 border-b border-white/5">
-              <p className="text-xs font-medium text-text truncate">{user.email}</p>
-              <span className="inline-block mt-1 px-2 py-0.5 text-[10px] font-semibold rounded-full bg-[#DAA520]/15 text-[#DAA520]">
-                {tierLabel}
+            <img src="/troy-avatar.png" alt="Troy" className="w-8 h-8 rounded-full shrink-0" />
+            {!effectiveCollapsed && (
+              <span className="text-[15px] font-semibold tracking-tight" style={{ color: '#C9A84C' }}>
+                Troy
               </span>
-            </div>
+            )}
+          </button>
+          {!effectiveCollapsed && (
             <button
-              onClick={() => { setUserMenuOpen(false); navigate('/settings'); }}
-              className="w-full text-left px-3 py-2 text-xs text-text-secondary hover:bg-white/5"
+              onClick={() => { handleNewConversation(); closeIfMobile?.(); }}
+              title="New conversation"
+              className="w-7 h-7 flex items-center justify-center rounded-md border border-[rgba(201,168,76,0.3)] text-[#C9A84C] hover:bg-[rgba(201,168,76,0.1)] transition-colors"
+              aria-label="New conversation"
             >
-              Account Settings
+              <Plus size={14} />
             </button>
+          )}
+        </div>
+
+        {/* Collapsed-mode "new conversation" button */}
+        {effectiveCollapsed && (
+          <div className="px-1.5 pb-2">
             <button
-              onClick={handleSignOut}
-              className="w-full text-left px-3 py-2 text-xs text-[#EF4444] hover:bg-[#EF4444]/10"
+              onClick={handleNewConversation}
+              title="New conversation"
+              className="w-full flex items-center justify-center py-2.5 rounded-lg border border-[rgba(201,168,76,0.3)] text-[#C9A84C] hover:bg-[rgba(201,168,76,0.1)] transition-colors"
+              aria-label="New conversation"
             >
-              Sign Out
+              <Plus size={16} />
             </button>
           </div>
         )}
-        {isConfigured && user ? (
-          <button
-            onClick={() => setUserMenuOpen(!userMenuOpen)}
-            className="w-full flex items-center gap-2 rounded-lg hover:bg-white/[0.04] p-1.5 -m-1.5"
-          >
-            <div className="w-7 h-7 rounded-full bg-[#DAA520]/15 flex items-center justify-center shrink-0">
-              <span className="text-[11px] font-semibold text-[#DAA520]">{userInitial}</span>
+
+        {/* Scrollable middle region: recents + nav */}
+        <div className="flex-1 overflow-y-auto overflow-x-hidden">
+          {/* Recents (expanded only) */}
+          {!effectiveCollapsed && (
+            <div className="px-2 pb-2">
+              <div
+                className="px-3 pt-2 pb-1 text-[11px] uppercase"
+                style={{ color: 'rgba(148,163,184,0.5)', letterSpacing: '1px' }}
+              >
+                Recents
+              </div>
+              {!user && isConfigured ? (
+                <div className="px-3 py-2 text-[12px] text-[#94A3B8]">Sign in to see conversations</div>
+              ) : loadingList && recentConvs.length === 0 ? (
+                <div className="px-3 py-2 text-[12px] text-[#94A3B8]">Loading…</div>
+              ) : recentConvs.length === 0 ? (
+                <div className="px-3 py-2 text-[12px] text-[#94A3B8]">No conversations yet.</div>
+              ) : (
+                <ul className="space-y-0.5">
+                  {recentConvs.map((c) => {
+                    const isActive = c.id === activeConversationId;
+                    return (
+                      <li key={c.id}>
+                        <div
+                          className={`group relative flex items-center rounded-lg transition-colors ${
+                            isActive ? 'bg-[rgba(201,168,76,0.08)]' : 'hover:bg-white/[0.05]'
+                          }`}
+                        >
+                          <button
+                            onClick={() => { handleSelectConversation(c.id); closeIfMobile?.(); }}
+                            className={`flex-1 text-left px-3 py-1.5 text-[13px] truncate ${
+                              isActive ? 'text-[#C9A84C]' : 'text-[#94A3B8] hover:text-white'
+                            }`}
+                            title={c.title || 'Untitled'}
+                          >
+                            {truncate(c.title || 'Untitled', TITLE_MAX_LEN)}
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleDeleteConversation(c.id); }}
+                            className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 mr-1 text-[#94A3B8] hover:text-[#EF4444]"
+                            aria-label="Delete conversation"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
             </div>
-            <span className="text-[11px] text-text-muted truncate flex-1 text-left">{user.email}</span>
-          </button>
-        ) : isConfigured ? (
-          <button
-            onClick={() => navigate('/auth')}
-            className="w-full text-left text-xs text-[#DAA520] py-1.5"
+          )}
+
+          {/* Navigation section */}
+          <div className={effectiveCollapsed ? 'pt-2 pb-2' : 'px-2 pb-2 pt-1'}>
+            {!effectiveCollapsed && (
+              <div
+                className="px-3 pt-2 pb-1 text-[11px] uppercase"
+                style={{ color: 'rgba(148,163,184,0.5)', letterSpacing: '1px' }}
+              >
+                Navigation
+              </div>
+            )}
+            <ul className="space-y-0.5">
+              {PRIMARY_NAV.map((item) => (
+                <li key={item.to}>
+                  <SidebarNavLink item={item} collapsed={effectiveCollapsed} onNavigate={closeIfMobile} />
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Developer section */}
+          <div className={effectiveCollapsed ? 'pt-2 pb-2' : 'px-2 pb-2 pt-1'}>
+            {!effectiveCollapsed && (
+              <div
+                className="px-3 pt-2 pb-1 text-[11px] uppercase"
+                style={{ color: 'rgba(148,163,184,0.5)', letterSpacing: '1px' }}
+              >
+                Developer
+              </div>
+            )}
+            <ul className="space-y-0.5">
+              {DEVELOPER_NAV.map((item) => (
+                <li key={item.to}>
+                  <SidebarNavLink item={item} collapsed={effectiveCollapsed} onNavigate={closeIfMobile} />
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+
+        {/* Footer region: settings, upgrade, user, collapse toggle */}
+        <div
+          className="border-t"
+          style={{ borderColor: 'rgba(201,168,76,0.1)' }}
+        >
+          {/* Settings */}
+          <div className={effectiveCollapsed ? 'pt-2' : 'px-2 pt-2'}>
+            <SidebarNavLink
+              item={{ to: '/settings', label: 'Settings', icon: <SettingsIcon size={18} /> }}
+              collapsed={effectiveCollapsed}
+              onNavigate={closeIfMobile}
+            />
+          </div>
+
+          {/* Upgrade CTA */}
+          {!isGold && (
+            <div className={effectiveCollapsed ? 'px-1.5 py-2' : 'px-3 py-2'}>
+              {effectiveCollapsed ? (
+                <button
+                  onClick={() => { setShowPricing(true); closeIfMobile?.(); }}
+                  title="Upgrade to Gold"
+                  className="w-full flex items-center justify-center py-2 rounded-lg text-[#0B1120] transition-colors"
+                  style={{ background: '#C9A84C' }}
+                >
+                  <Sparkles size={16} />
+                </button>
+              ) : (
+                <button
+                  onClick={() => { setShowPricing(true); closeIfMobile?.(); }}
+                  className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-[13px] font-semibold text-[#0B1120] hover:opacity-90 transition-opacity"
+                  style={{ background: '#C9A84C' }}
+                >
+                  <Gem size={14} />
+                  Upgrade to Gold
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* User row */}
+          <div
+            ref={userMenuRef}
+            className={`relative ${effectiveCollapsed ? 'px-1.5 pt-1 pb-1' : 'px-2 pt-1 pb-1'}`}
           >
-            Sign in to sync
-          </button>
-        ) : null}
+            {userMenuOpen && user && !effectiveCollapsed && (
+              <div
+                className="absolute bottom-full left-2 right-2 mb-2 rounded-lg overflow-hidden shadow-xl z-20"
+                style={{ background: '#11172A', border: '1px solid rgba(201,168,76,0.15)' }}
+              >
+                <div className="px-3 py-2.5 border-b" style={{ borderColor: 'rgba(148,163,184,0.12)' }}>
+                  <p className="text-[12px] font-medium text-white truncate">{user.email}</p>
+                  <span
+                    className="inline-block mt-1 px-2 py-0.5 text-[10px] font-semibold rounded-full"
+                    style={{ background: 'rgba(201,168,76,0.15)', color: '#C9A84C' }}
+                  >
+                    {tierLabel}
+                  </span>
+                </div>
+                <button
+                  onClick={() => { setUserMenuOpen(false); navigate('/settings'); }}
+                  className="w-full text-left px-3 py-2 text-[12px] text-[#94A3B8] hover:text-white hover:bg-white/[0.05] transition-colors"
+                >
+                  Account Settings
+                </button>
+              </div>
+            )}
+
+            {isConfigured && user ? (
+              <button
+                onClick={() => {
+                  if (effectiveCollapsed) {
+                    setCollapsed(false);
+                  } else {
+                    setUserMenuOpen((v) => !v);
+                  }
+                }}
+                title={effectiveCollapsed ? user.email ?? 'Account' : undefined}
+                className={`w-full flex items-center rounded-lg hover:bg-white/[0.05] transition-colors ${
+                  effectiveCollapsed ? 'justify-center py-2' : 'gap-2 px-2 py-2'
+                }`}
+              >
+                <div
+                  className="w-7 h-7 rounded-full flex items-center justify-center shrink-0"
+                  style={{ background: 'rgba(201,168,76,0.15)' }}
+                >
+                  <span className="text-[11px] font-semibold" style={{ color: '#C9A84C' }}>
+                    {userInitial}
+                  </span>
+                </div>
+                {!effectiveCollapsed && (
+                  <span className="text-[11px] text-[#94A3B8] truncate flex-1 text-left">{user.email}</span>
+                )}
+              </button>
+            ) : isConfigured ? (
+              <button
+                onClick={() => { navigate('/auth'); closeIfMobile?.(); }}
+                className={`w-full ${effectiveCollapsed ? 'text-center py-2' : 'text-left px-2 py-2'} text-[12px] text-[#C9A84C]`}
+                title={effectiveCollapsed ? 'Sign in' : undefined}
+              >
+                {effectiveCollapsed ? '→' : 'Sign in to sync'}
+              </button>
+            ) : null}
+
+            {isConfigured && user && (
+              <button
+                onClick={handleSignOut}
+                title={effectiveCollapsed ? 'Sign Out' : undefined}
+                className={`w-full flex items-center rounded-lg text-[12px] text-[#94A3B8] hover:text-[#EF4444] hover:bg-[#EF4444]/10 transition-colors ${
+                  effectiveCollapsed ? 'justify-center py-2 mt-1' : 'gap-2 px-2 py-2 mt-0.5'
+                }`}
+              >
+                <LogOut size={14} />
+                {!effectiveCollapsed && <span>Sign Out</span>}
+              </button>
+            )}
+          </div>
+
+          {/* Collapse / expand toggle (desktop only) */}
+          {!isMobileOverlay && (
+            <div
+              className={`hidden lg:flex border-t ${effectiveCollapsed ? 'justify-center py-2' : 'justify-end px-3 py-2'}`}
+              style={{ borderColor: 'rgba(201,168,76,0.1)' }}
+            >
+              <button
+                onClick={() => setCollapsed((v) => !v)}
+                title={effectiveCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                aria-label={effectiveCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                className="w-7 h-7 flex items-center justify-center rounded-md text-[#94A3B8] hover:text-white hover:bg-white/[0.05] transition-colors"
+              >
+                {effectiveCollapsed ? <ChevronsRight size={16} /> : <ChevronsLeft size={16} />}
+              </button>
+            </div>
+          )}
+        </div>
       </div>
-    </div>
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  ), [conversations, activeConversationId, loadingList, isGold, isConfigured, user, userMenuOpen, tierLabel, userInitial]);
+    );
+  };
 
   return (
-    <div className="min-h-screen flex" style={{ background: '#0A0A0E' }}>
+    <div className="min-h-screen" style={{ background: '#0A0A0E' }}>
+      {/* Desktop sidebar (fixed, width animated) */}
+      <aside
+        className="hidden lg:flex fixed top-0 left-0 h-screen z-40 transition-[width] duration-200 ease-in-out"
+        style={{
+          width: sidebarWidth,
+          background: '#0B1120',
+          borderRight: '1px solid rgba(201,168,76,0.1)',
+        }}
+      >
+        {renderSidebarBody(false)}
+      </aside>
+
       {/* Mobile top bar */}
-      <header className="lg:hidden fixed top-0 left-0 right-0 h-14 z-40 flex items-center justify-between px-3 border-b border-white/5" style={{ background: '#0A0A0E' }}>
+      <header
+        className="lg:hidden fixed top-0 left-0 right-0 h-14 z-30 flex items-center justify-between px-3"
+        style={{ background: '#0B1120', borderBottom: '1px solid rgba(201,168,76,0.1)' }}
+      >
         <button
-          onClick={() => setSidebarOpen(true)}
-          className="w-10 h-10 flex items-center justify-center text-text"
+          onClick={() => setMobileOpen(true)}
+          className="w-10 h-10 flex items-center justify-center text-[#94A3B8] hover:text-white"
           aria-label="Open menu"
         >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-          </svg>
+          <Menu size={20} />
         </button>
         <div className="flex items-center gap-2">
           <img src="/troy-avatar.png" alt="Troy" className="w-7 h-7 rounded-full" />
           <div className="leading-tight">
-            <div className="text-sm font-semibold text-[#DAA520]">Troy</div>
-            <div className="text-[10px] text-text-muted">Your Stack Analyst</div>
+            <div className="text-sm font-semibold" style={{ color: '#C9A84C' }}>Troy</div>
+            <div className="text-[10px] text-[#94A3B8]">Your Stack Analyst</div>
           </div>
         </div>
         <button
-          onClick={() => user ? setUserMenuOpen(!userMenuOpen) : navigate('/auth')}
-          className="w-8 h-8 rounded-full bg-[#DAA520]/15 flex items-center justify-center"
-          aria-label="User menu"
+          onClick={() => user ? navigate('/settings') : navigate('/auth')}
+          className="w-8 h-8 rounded-full flex items-center justify-center"
+          style={{ background: 'rgba(201,168,76,0.15)' }}
+          aria-label="Account"
         >
-          <span className="text-xs font-semibold text-[#DAA520]">{userInitial}</span>
+          <span className="text-xs font-semibold" style={{ color: '#C9A84C' }}>{userInitial}</span>
         </button>
       </header>
 
-      {/* Desktop persistent sidebar */}
-      <aside
-        className="hidden lg:flex flex-col fixed top-0 left-0 h-screen border-r border-white/5"
-        style={{ width: SIDEBAR_WIDTH, background: '#0B0B10' }}
-      >
-        {sidebarContent}
-      </aside>
-
-      {/* Mobile drawer */}
-      {sidebarOpen && (
+      {/* Mobile overlay drawer */}
+      {mobileOpen && (
         <div className="lg:hidden fixed inset-0 z-50">
-          <div className="absolute inset-0 bg-black/70" onClick={() => setSidebarOpen(false)} />
+          <div
+            className="absolute inset-0 bg-black/70 transition-opacity duration-200"
+            onClick={() => setMobileOpen(false)}
+          />
           <aside
-            className="absolute top-0 left-0 h-full border-r border-white/5 flex flex-col"
-            style={{ width: SIDEBAR_WIDTH, background: '#0B0B10' }}
+            className="absolute top-0 left-0 h-full flex flex-col transition-transform duration-200"
+            style={{
+              width: EXPANDED_WIDTH,
+              background: '#0B1120',
+              borderRight: '1px solid rgba(201,168,76,0.1)',
+            }}
           >
             <button
-              onClick={() => setSidebarOpen(false)}
-              className="absolute top-3 right-3 text-text-muted hover:text-text"
+              onClick={() => setMobileOpen(false)}
+              className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center text-[#94A3B8] hover:text-white z-10"
               aria-label="Close menu"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
+              <X size={18} />
             </button>
-            {sidebarContent}
+            {renderSidebarBody(true)}
           </aside>
         </div>
       )}
 
-      {/* Main content — sidebar is fixed so we offset with left margin on desktop */}
-      <main className="flex-1 flex flex-col min-w-0 pt-14 lg:pt-0 lg:ml-[260px]">
+      {/* Main content — margin follows sidebar width on desktop, 0 on mobile */}
+      <main
+        className={`flex flex-col min-w-0 min-h-screen pt-14 lg:pt-0 transition-[margin-left] duration-200 ease-in-out ${
+          collapsed ? 'lg:ml-[60px]' : 'lg:ml-[260px]'
+        }`}
+      >
         <Outlet context={{ refreshConversations }} />
       </main>
 
