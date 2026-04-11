@@ -143,7 +143,7 @@ export default function Layout() {
       <aside className="hidden md:flex flex-col w-[220px] h-screen fixed top-0 left-0 bg-sidebar border-r border-border z-40">
         <div className="p-5 pb-6 shrink-0">
           <Link to="/" className="flex items-center gap-2.5">
-            <img src="/icon-512.png" alt="TroyStack" className="w-8 h-8 rounded-lg" />
+            <img src="/troy-avatar.png" alt="TroyStack" className="w-8 h-8 rounded-lg" />
             <div>
               <h1 className="text-sm font-semibold tracking-tight">
                 <span className="text-gold">TroyStack</span>
@@ -287,7 +287,7 @@ export default function Layout() {
       {/* Mobile Top Header */}
       <header className="md:hidden fixed top-0 left-0 right-0 h-14 bg-sidebar/95 backdrop-blur-xl border-b border-border z-50 flex items-center justify-between px-4" ref={mobileMenuRef}>
         <Link to="/" className="flex items-center gap-2">
-          <img src="/icon-512.png" alt="TroyStack" className="w-8 h-8 rounded-lg" />
+          <img src="/troy-avatar.png" alt="TroyStack" className="w-8 h-8 rounded-lg" />
           <span className="text-sm font-semibold text-gold tracking-tight">TroyStack</span>
         </Link>
 

@@ -117,7 +117,7 @@ export default function Auth() {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="max-w-md w-full text-center">
-          <img src="/icon-512.png" alt="TroyStack" className="w-16 h-16 mx-auto mb-3 rounded-xl" />
+          <img src="/troy-avatar.png" alt="TroyStack" className="w-16 h-16 mx-auto mb-3 rounded-xl" />
           <h1 className="text-3xl font-bold text-gold mb-4">TroyStack</h1>
           <p className="text-text-muted">
             {checkoutRedirecting ? 'Redirecting to checkout...' : 'Loading...'}
@@ -205,7 +205,7 @@ export default function Auth() {
       <div className="max-w-md w-full">
         {/* Logo/Header */}
         <div className="text-center mb-8">
-          <img src="/icon-512.png" alt="TroyStack" className="w-16 h-16 mx-auto mb-3 rounded-xl" />
+          <img src="/troy-avatar.png" alt="TroyStack" className="w-16 h-16 mx-auto mb-3 rounded-xl" />
           <h1 className="text-3xl font-bold text-gold mb-2">TroyStack</h1>
           <p className="text-text-muted">
             {mode === 'forgot'
