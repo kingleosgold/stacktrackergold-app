@@ -33,7 +33,7 @@ import {
 } from '../services/troy';
 
 const EXPANDED_WIDTH = 260;
-const COLLAPSED_WIDTH = 60;
+const COLLAPSED_WIDTH = 48;
 const COLLAPSED_STORAGE_KEY = 'troystack_sidebar_collapsed';
 const MAX_RECENT_CONVERSATIONS = 8;
 const TITLE_MAX_LEN = 30;
@@ -97,8 +97,8 @@ function SidebarNavLink({ item, collapsed, onNavigate }: SidebarNavLinkProps) {
       title={collapsed ? item.label : undefined}
       className={({ isActive }) =>
         [
-          'relative flex items-center rounded-lg text-[13px] font-medium transition-all duration-200',
-          collapsed ? 'justify-center px-0 py-2.5 mx-1.5' : 'gap-3 px-3 py-2',
+          'relative flex items-center text-[13px] font-medium transition-all duration-200',
+          collapsed ? 'w-full justify-center px-0 py-2.5' : 'gap-3 px-3 py-2 rounded-lg',
           isActive
             ? 'text-[#C9A84C] bg-[rgba(201,168,76,0.08)]'
             : 'text-[#94A3B8] hover:text-white hover:bg-white/[0.05]',
@@ -614,7 +614,7 @@ export default function ChatLayout() {
       {/* Main content — margin follows sidebar width on desktop, 0 on mobile */}
       <main
         className={`flex flex-col min-w-0 min-h-screen pt-14 lg:pt-0 transition-[margin-left] duration-200 ease-in-out ${
-          collapsed ? 'lg:ml-[60px]' : 'lg:ml-[260px]'
+          collapsed ? 'lg:ml-[48px]' : 'lg:ml-[260px]'
         }`}
       >
         <Outlet context={{ refreshConversations }} />
