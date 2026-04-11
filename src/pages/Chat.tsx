@@ -60,12 +60,20 @@ export default function Chat() {
 
   const abortRef = useRef<AbortController | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  // Conversations we created in this tab — skip the initial GET for these,
+  // since the server has no messages yet and the fetch races the pending send
+  // and wipes the optimistic user message.
+  const locallyCreatedRef = useRef<Set<string>>(new Set());
   const conversationId = params.conversationId ?? null;
 
   // Load conversation
   useEffect(() => {
     if (!conversationId || !user) {
       setMessages([]);
+      return;
+    }
+    if (locallyCreatedRef.current.has(conversationId)) {
+      locallyCreatedRef.current.delete(conversationId);
       return;
     }
     let cancelled = false;
@@ -105,6 +113,9 @@ export default function Chat() {
       try {
         const conv = await createConversation(user.id);
         convId = conv.id;
+        // Mark as locally-created BEFORE navigate so the load-effect skips
+        // its initial GET and doesn't race the send below.
+        locallyCreatedRef.current.add(conv.id);
         navigate(`/c/${conv.id}`, { replace: true });
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Failed to start conversation');
