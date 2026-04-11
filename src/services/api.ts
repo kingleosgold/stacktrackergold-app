@@ -371,6 +371,83 @@ export async function createCustomerPortal(userId: string): Promise<{ url: strin
   return response.json();
 }
 
+// ─── Developer API Keys ─────────────────────────────────────────
+
+export interface ApiKey {
+  id: string;
+  name: string;
+  key_preview: string;          // last 8 chars, e.g. "a1b2c3d4"
+  tier: 'free' | 'pro' | 'enterprise';
+  rate_limit: number;           // requests per hour
+  created_at: string;
+  last_used_at: string | null;
+  request_count: number;
+  is_active?: boolean;
+}
+
+export interface GeneratedApiKey extends ApiKey {
+  api_key: string;              // raw key — only returned on create, never again
+}
+
+async function apiKeyRequest<T>(
+  path: string,
+  accessToken: string,
+  init: RequestInit = {},
+): Promise<T> {
+  const res = await fetch(`${API_BASE_URL}${path}`, {
+    ...init,
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${accessToken}`,
+      ...(init.headers || {}),
+    },
+  });
+  const text = await res.text();
+  let data: { error?: string; message?: string; [k: string]: unknown } = {};
+  if (text) {
+    try { data = JSON.parse(text); } catch { /* non-JSON body */ }
+  }
+  if (!res.ok) {
+    const msg = data.message || data.error || `Request failed: ${res.status}`;
+    const err = new Error(msg) as Error & { status?: number };
+    err.status = res.status;
+    throw err;
+  }
+  return data as T;
+}
+
+export async function listApiKeys(accessToken: string): Promise<ApiKey[]> {
+  const data = await apiKeyRequest<{ keys?: ApiKey[] } | ApiKey[]>(
+    '/v1/api-keys',
+    accessToken,
+  );
+  if (Array.isArray(data)) return data;
+  return data.keys ?? [];
+}
+
+export async function generateApiKey(
+  accessToken: string,
+  name?: string,
+): Promise<GeneratedApiKey> {
+  const data = await apiKeyRequest<{ key?: GeneratedApiKey } & GeneratedApiKey>(
+    '/v1/api-keys/generate',
+    accessToken,
+    {
+      method: 'POST',
+      body: JSON.stringify(name ? { name } : {}),
+    },
+  );
+  // Server may return { key: {...} } or flat
+  return data.key ?? (data as unknown as GeneratedApiKey);
+}
+
+export async function revokeApiKey(accessToken: string, id: string): Promise<void> {
+  await apiKeyRequest<unknown>(`/v1/api-keys/${encodeURIComponent(id)}`, accessToken, {
+    method: 'DELETE',
+  });
+}
+
 // ─── AI Daily Brief ──────────────────────────────────────────────
 
 export interface DailyBrief {
