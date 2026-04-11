@@ -203,6 +203,28 @@ export async function fetchVaultData(source = 'comex', days = 30): Promise<Vault
   return { success: true, source, days, data: raw.data || {} };
 }
 
+// ─── Stack Signal ───────────────────────────────────────────────
+
+export interface StackSignalArticle {
+  id: string;
+  title: string;
+  troy_commentary: string;
+  published_at?: string;
+  category?: string;
+  sources?: Array<{ title?: string; url?: string } | string>;
+}
+
+export async function fetchStackSignal(limit = 20): Promise<StackSignalArticle[]> {
+  const res = await fetch(`${API_BASE_URL}/v1/stack-signal?limit=${limit}`);
+  if (!res.ok) throw new Error(`Failed to fetch stack signal: ${res.status}`);
+  const raw = await res.json();
+  // Accept either a bare array or { articles: [...] } / { data: [...] } wrapper
+  const articles: StackSignalArticle[] = Array.isArray(raw)
+    ? raw
+    : raw.articles ?? raw.data ?? [];
+  return articles;
+}
+
 // ─── Spot Price History ─────────────────────────────────────────
 
 export interface SpotPriceHistoryPoint {

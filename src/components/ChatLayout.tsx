@@ -238,47 +238,67 @@ export default function ChatLayout() {
 
     return (
       <div className="flex flex-col h-full">
-        {/* Brand header */}
-        <div
-          className={`flex items-center ${
-            effectiveCollapsed ? 'justify-center px-0 py-4' : 'justify-between px-4 py-4'
-          }`}
-        >
-          <button
-            onClick={() => { navigate('/'); closeIfMobile?.(); }}
-            className="flex items-center gap-2.5"
-            aria-label="TroyStack home"
-          >
-            <img src="/troy-avatar.png" alt="Troy" className="w-8 h-8 rounded-full shrink-0" />
-            {!effectiveCollapsed && (
-              <span className="text-[15px] font-semibold tracking-tight" style={{ color: '#C9A84C' }}>
-                Troy
-              </span>
-            )}
-          </button>
-          {!effectiveCollapsed && (
+        {/* Brand header — logo + New button + collapse toggle */}
+        {effectiveCollapsed ? (
+          <div className="flex flex-col items-center gap-2 px-0 py-3">
             <button
-              onClick={() => { handleNewConversation(); closeIfMobile?.(); }}
-              title="New conversation"
-              className="w-7 h-7 flex items-center justify-center rounded-md border border-[rgba(201,168,76,0.3)] text-[#C9A84C] hover:bg-[rgba(201,168,76,0.1)] transition-colors"
-              aria-label="New conversation"
+              onClick={() => { navigate('/'); closeIfMobile?.(); }}
+              aria-label="TroyStack home"
+              title="TroyStack"
             >
-              <Plus size={14} />
+              <img src="/troy-avatar.png" alt="Troy" className="w-8 h-8 rounded-full shrink-0" />
             </button>
-          )}
-        </div>
-
-        {/* Collapsed-mode "new conversation" button */}
-        {effectiveCollapsed && (
-          <div className="px-1.5 pb-2">
+            {!isMobileOverlay && (
+              <button
+                onClick={() => setCollapsed((v) => !v)}
+                title="Expand sidebar"
+                aria-label="Expand sidebar"
+                className="w-7 h-7 flex items-center justify-center rounded-md text-[#94A3B8] hover:text-white hover:bg-white/[0.05] transition-colors"
+              >
+                <ChevronsRight size={16} />
+              </button>
+            )}
             <button
               onClick={handleNewConversation}
               title="New conversation"
-              className="w-full flex items-center justify-center py-2.5 rounded-lg border border-[rgba(201,168,76,0.3)] text-[#C9A84C] hover:bg-[rgba(201,168,76,0.1)] transition-colors"
+              className="w-9 h-9 flex items-center justify-center rounded-lg border border-[rgba(201,168,76,0.3)] text-[#C9A84C] hover:bg-[rgba(201,168,76,0.1)] transition-colors"
               aria-label="New conversation"
             >
               <Plus size={16} />
             </button>
+          </div>
+        ) : (
+          <div className="flex items-center justify-between px-4 py-4">
+            <button
+              onClick={() => { navigate('/'); closeIfMobile?.(); }}
+              className="flex items-center gap-2.5"
+              aria-label="TroyStack home"
+            >
+              <img src="/troy-avatar.png" alt="Troy" className="w-8 h-8 rounded-full shrink-0" />
+              <span className="text-[15px] font-semibold tracking-tight" style={{ color: '#C9A84C' }}>
+                Troy
+              </span>
+            </button>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => { handleNewConversation(); closeIfMobile?.(); }}
+                title="New conversation"
+                className="w-7 h-7 flex items-center justify-center rounded-md border border-[rgba(201,168,76,0.3)] text-[#C9A84C] hover:bg-[rgba(201,168,76,0.1)] transition-colors"
+                aria-label="New conversation"
+              >
+                <Plus size={14} />
+              </button>
+              {!isMobileOverlay && (
+                <button
+                  onClick={() => setCollapsed((v) => !v)}
+                  title="Collapse sidebar"
+                  aria-label="Collapse sidebar"
+                  className="w-7 h-7 hidden lg:flex items-center justify-center rounded-md text-[#94A3B8] hover:text-white hover:bg-white/[0.05] transition-colors"
+                >
+                  <ChevronsLeft size={16} />
+                </button>
+              )}
+            </div>
           </div>
         )}
 
@@ -496,22 +516,6 @@ export default function ChatLayout() {
             )}
           </div>
 
-          {/* Collapse / expand toggle (desktop only) */}
-          {!isMobileOverlay && (
-            <div
-              className={`hidden lg:flex border-t ${effectiveCollapsed ? 'justify-center py-2' : 'justify-end px-3 py-2'}`}
-              style={{ borderColor: 'rgba(201,168,76,0.1)' }}
-            >
-              <button
-                onClick={() => setCollapsed((v) => !v)}
-                title={effectiveCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-                aria-label={effectiveCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-                className="w-7 h-7 flex items-center justify-center rounded-md text-[#94A3B8] hover:text-white hover:bg-white/[0.05] transition-colors"
-              >
-                {effectiveCollapsed ? <ChevronsRight size={16} /> : <ChevronsLeft size={16} />}
-              </button>
-            </div>
-          )}
         </div>
       </div>
     );
