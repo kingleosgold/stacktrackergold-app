@@ -1,6 +1,73 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 
 type Method = 'GET' | 'POST' | 'PATCH' | 'DELETE';
+
+interface CopyableCodeBlockProps {
+  label?: string;
+  code: string;
+}
+
+function CopyableCodeBlock({ label, code }: CopyableCodeBlockProps) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      window.prompt('Copy:', code);
+    }
+  };
+
+  return (
+    <div
+      className="rounded-lg border overflow-hidden"
+      style={{ background: '#0B1120', borderColor: 'rgba(201,168,76,0.1)' }}
+    >
+      <div
+        className="flex items-center justify-between px-4 py-2 border-b"
+        style={{ borderColor: 'rgba(201,168,76,0.1)' }}
+      >
+        <span className="text-[10px] uppercase tracking-wider text-[#94A3B8]">{label ?? 'Code'}</span>
+        <button
+          onClick={handleCopy}
+          className="text-[11px] font-semibold transition-colors hover:text-white"
+          style={{ color: copied ? '#C9A84C' : '#94A3B8' }}
+        >
+          {copied ? '✓ Copied' : 'Copy'}
+        </button>
+      </div>
+      <pre className="px-4 py-3 font-mono text-[12px] leading-relaxed overflow-x-auto text-[#E5E7EB]">
+        {code}
+      </pre>
+    </div>
+  );
+}
+
+const CLAUDE_DESKTOP_CONFIG = `{
+  "mcpServers": {
+    "troystack": {
+      "url": "https://api.troystack.ai/mcp"
+    }
+  }
+}`;
+
+const CURSOR_CONFIG = `{
+  "troystack": {
+    "url": "https://api.troystack.ai/mcp"
+  }
+}`;
+
+const MCP_TOOLS: Array<{ name: string; description: string }> = [
+  { name: 'get_spot_prices', description: 'Live gold, silver, platinum, palladium prices' },
+  { name: 'get_price_history', description: 'Historical price data with configurable range' },
+  { name: 'get_stack_signal', description: 'AI-generated market intelligence articles' },
+  { name: 'get_vault_watch', description: 'COMEX warehouse inventory data' },
+  { name: 'get_junk_silver', description: 'Pre-1965 US coin silver melt calculator' },
+  { name: 'get_speculation', description: 'What-if price scenario calculator' },
+];
 
 interface Endpoint {
   method: Method;
@@ -115,6 +182,92 @@ export default function Developers() {
           and portfolio management.
         </p>
       </header>
+
+      {/* Connect via MCP */}
+      <section className="mb-10">
+        <h2 className="text-xl font-semibold text-white mb-2">Connect via MCP</h2>
+        <p className="text-sm text-[#94A3B8] leading-relaxed max-w-2xl mb-5">
+          TroyStack is available as an MCP server. Connect from Claude Desktop, Cursor, or any
+          MCP-compatible client to access live precious metals data directly in your AI tools.
+        </p>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          {/* Claude Desktop */}
+          <div
+            className="rounded-xl border p-5"
+            style={{ background: '#141B2D', borderColor: 'rgba(201,168,76,0.1)' }}
+          >
+            <div className="flex items-center gap-2 mb-1">
+              <div
+                className="w-6 h-6 rounded flex items-center justify-center"
+                style={{ background: 'rgba(201,168,76,0.15)', color: '#C9A84C' }}
+              >
+                <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </div>
+              <h3 className="text-sm font-semibold text-white">Claude Desktop</h3>
+            </div>
+            <p className="text-[12px] text-[#94A3B8] mb-3">
+              Add to your <code className="font-mono text-white px-1 rounded" style={{ background: 'rgba(255,255,255,0.06)' }}>claude_desktop_config.json</code>:
+            </p>
+            <CopyableCodeBlock label="JSON" code={CLAUDE_DESKTOP_CONFIG} />
+          </div>
+
+          {/* Cursor */}
+          <div
+            className="rounded-xl border p-5"
+            style={{ background: '#141B2D', borderColor: 'rgba(201,168,76,0.1)' }}
+          >
+            <div className="flex items-center gap-2 mb-1">
+              <div
+                className="w-6 h-6 rounded flex items-center justify-center"
+                style={{ background: 'rgba(201,168,76,0.15)', color: '#C9A84C' }}
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.59 14.37a6 6 0 01-5.84 7.38v-4.8m5.84-2.58a14.98 14.98 0 006.16-12.12A14.98 14.98 0 009.631 8.41m5.96 5.96a14.926 14.926 0 01-5.841 2.58m-.119-8.54a6 6 0 00-7.381 5.84h4.8m2.581-5.84a14.927 14.927 0 00-2.58 5.84m2.699 2.7c-.103.021-.207.041-.311.06a15.09 15.09 0 01-2.448-2.448 14.9 14.9 0 01.06-.312m-2.24 2.39a4.493 4.493 0 00-1.757 4.306 4.493 4.493 0 004.306-1.758M16.5 9a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" />
+                </svg>
+              </div>
+              <h3 className="text-sm font-semibold text-white">Cursor</h3>
+            </div>
+            <p className="text-[12px] text-[#94A3B8] mb-3">
+              Add to your MCP settings:
+            </p>
+            <CopyableCodeBlock label="JSON" code={CURSOR_CONFIG} />
+          </div>
+        </div>
+
+        {/* Available tools */}
+        <div
+          className="rounded-xl border p-5 mb-4"
+          style={{ background: '#141B2D', borderColor: 'rgba(201,168,76,0.1)' }}
+        >
+          <h3 className="text-xs uppercase tracking-wider text-[#94A3B8] mb-3">Available tools</h3>
+          <ul className="space-y-2">
+            {MCP_TOOLS.map((t) => (
+              <li key={t.name} className="flex items-baseline gap-3 flex-wrap">
+                <code
+                  className="font-mono text-[12px] font-semibold"
+                  style={{ color: '#C9A84C' }}
+                >
+                  {t.name}
+                </code>
+                <span className="text-[12px] text-[#94A3B8]">— {t.description}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <p className="text-[12px] text-[#94A3B8]">
+          No authentication required for public tools. MCP endpoint:{' '}
+          <code
+            className="font-mono text-[12px] px-1.5 py-0.5 rounded"
+            style={{ background: 'rgba(255,255,255,0.06)', color: '#C9A84C' }}
+          >
+            https://api.troystack.ai/mcp
+          </code>
+        </p>
+      </section>
 
       {/* Base URL */}
       <section className="mb-10">
